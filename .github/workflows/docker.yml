@@ -1,0 +1,44 @@
+# Construye la imagen de Docker con cada cambio, corre las pruebas dentro del contenedor y comprueba que la API
+# arranca, responde y pasa su revisión de salud (HEALTHCHECK).
+name: Docker
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  imagen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Construir la imagen
+        run: docker build -t predictor-flujo-efectivo .
+
+      - name: Pruebas dentro del contenedor
+        run: docker run --rm predictor-flujo-efectivo python -m pytest tests -q -p no:cacheprovider
+
+      - name: Arrancar la API y consultarla
+        run: |
+          docker run -d --name api -p 8000:8000 predictor-flujo-efectivo
+          for i in $(seq 1 45); do
+            estado=$(docker inspect --format '{{.State.Health.Status}}' api)
+            [ "$estado" = "healthy" ] && break
+            sleep 2
+          done
+          echo "Estado de salud: $estado"
+          test "$estado" = "healthy"
+          curl -fsS -o /dev/null http://localhost:8000/
+          curl -fsS "http://localhost:8000/api/v1/pronostico?serie=OPERATIVO_TOTAL&modelo=ETS" \
+            | python3 -c "import json, sys; d = json.load(sys.stdin); assert len(d['dias']) == 5; print('Alerta:', d['alerta_deficit']['nivel'])"
+          docker exec api ls salidas
+
+      - name: Registro del contenedor
+        if: always()
+        run: docker logs api || true

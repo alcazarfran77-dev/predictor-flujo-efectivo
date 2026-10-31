@@ -1,1 +1,40 @@
+# Corre las pruebas en cada cambio que se sube a GitHub. El resultado aparece en la pestaña Actions
+# y como una palomita (o una cruz) junto a cada commit.
+name: Pruebas
 
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-api.txt
+
+      - name: Instalar dependencias y Chromium
+        run: |
+          pip install -r requirements-api.txt playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Validar el JSON de movimientos
+        run: python -m api.validar data/movimientos_feban_sep2025_sep2026_anon.json
+
+      - name: Pruebas de validación, API, página y navegador
+        run: python -m pytest tests -q
+
+      - name: Revisar que docs/ se pueda volver a generar
+        run: python -m api.publicar --salida /tmp/pagina
