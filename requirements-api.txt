@@ -1,0 +1,18 @@
+# Backend (API) y dashboard. No necesitan torch ni Chronos, salvo que se active FLUJO_CHRONOS=1
+# (en ese caso, instalar también requirements.txt). Versiones probadas entre paréntesis.
+
+fastapi>=0.110        # (0.160.0)
+uvicorn>=0.29         # (0.53.0)
+statsmodels>=0.14     # (0.15.0)
+scipy>=1.11           # (1.18.1)
+scikit-learn>=1.3     # (1.9.1)
+pandas>=2.2           # (3.0.5)
+numpy>=1.26           # (2.5.3)
+openpyxl>=3.1         # (3.1.5)
+requests>=2.31        # (2.34.2)
+
+# Pruebas
+pytest>=8             # (9.1.1)
+httpx>=0.27           # (0.28.1) cliente de pruebas de FastAPI
+# Opcional, para la prueba en navegador (tests/test_e2e.py):
+#   pip install playwright && python -m playwright install chromium

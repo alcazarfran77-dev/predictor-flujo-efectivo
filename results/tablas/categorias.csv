@@ -1,0 +1,9 @@
+flujo,categoria,movimientos,ingresos (M MXN),egresos (M MXN),neto (M MXN)
+Operativo,Cargo por cartera,73,0.000000,-274.355609,-274.355609
+Operativo,Cobranza SPEI / TEF,3040,1002.637381,0.000000,1002.637381
+Operativo,Comisiones e IVA bancario,244,0.000000,-0.005611,-0.005611
+Operativo,Compensación SPEI,471,0.000024,0.000000,0.000024
+Operativo,Depósitos (efectivo / terceros),202,25.774796,0.000000,25.774796
+Operativo,Pago cuenta de tercero,279,9.349729,0.000000,9.349729
+Tesorería,Tesorería: barrido (cash pooling),283,774.626612,-303.220902,471.405711
+Tesorería,Tesorería: giro / traspaso de fondos,212,216.000000,-1446.259000,-1230.259000

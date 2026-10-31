@@ -1,0 +1,791 @@
+{
+  "formato": "flujo-efectivo/pronostico",
+  "version": "1.0",
+  "version_api": "1.1.0",
+  "generado": "2026-10-30T03:42:21+00:00",
+  "pronostico_calculado": "2026-10-30T03:42:21+00:00",
+  "datos": {
+    "archivo": "movimientos_feban_sep2025_sep2026_anon.json",
+    "formato": "json",
+    "huella": "05b682222f318e4d",
+    "desde": "2025-09-01",
+    "hasta": "2026-09-30",
+    "dias_habiles": 283,
+    "movimientos": 4804,
+    "duplicados": 0,
+    "avisos": []
+  },
+  "modelo": "ETS",
+  "familia": "Estadístico",
+  "recomendado": true,
+  "latencia_ms": 255.19757400002163,
+  "horizonte": 5,
+  "cuantiles": [
+    0.1,
+    0.5,
+    0.9
+  ],
+  "unidades": "MXN",
+  "umbral_deficit": 0.0,
+  "niveles_alerta": {
+    "ninguna": "El P10 de todos los días queda en cero o arriba",
+    "vigilancia": "El P10 de algún día es menor a 0 (regla del reporte técnico)",
+    "media": "La probabilidad de déficit de algún día es de 25% o más",
+    "alta": "El P50 de algún día es menor a 0: el déficit es más probable que no"
+  },
+  "confianza": {
+    "disponible": true,
+    "estado_backtest": "listo",
+    "nivel": "media",
+    "origenes": 276,
+    "periodo_backtest": [
+      "2025-09-04",
+      "2026-09-30"
+    ],
+    "metricas": {
+      "mae": 2212890.836244565,
+      "rmae": 0.7260936751514239,
+      "sesgo": -47015.11985688406,
+      "wql": 0.634220382023568,
+      "cobertura": 84.16666666666667,
+      "f1_direccion": 0.6970599181243022,
+      "n": 5520
+    },
+    "desde_corte": {
+      "mae": 2417843.851075,
+      "rmae": 0.647896957644635,
+      "sesgo": 326982.3986249999,
+      "wql": 0.656658156622583,
+      "cobertura": 81.75,
+      "f1_direccion": 0.7251184834123223,
+      "n": 400
+    },
+    "fecha_corte": "2026-09-01",
+    "umbrales": [
+      {
+        "clave": "rmae",
+        "nombre": "rMAE frente al ingenuo",
+        "valor": 0.7260936751514239,
+        "condicion": "<= 0.8",
+        "unidad": "",
+        "cumple": true
+      },
+      {
+        "clave": "wql",
+        "nombre": "WQL",
+        "valor": 0.634220382023568,
+        "condicion": "<= 0.65",
+        "unidad": "",
+        "cumple": true
+      },
+      {
+        "clave": "cobertura",
+        "nombre": "Cobertura P10–P90",
+        "valor": 84.16666666666667,
+        "condicion": "entre 70 y 90",
+        "unidad": "%",
+        "cumple": true
+      },
+      {
+        "clave": "f1_direccion",
+        "nombre": "F1 del evento dirección",
+        "valor": 0.6970599181243022,
+        "condicion": ">= 0.65",
+        "unidad": "",
+        "cumple": true
+      },
+      {
+        "clave": "sesgo_cambio",
+        "nombre": "Sesgo medio en las 4 semanas tras un cambio de temporada",
+        "valor": 0.3827969690206186,
+        "condicion": "entre -0.3 y 0.3",
+        "unidad": "M MXN/día",
+        "cumple": false
+      },
+      {
+        "clave": "latencia",
+        "nombre": "Latencia de la corrida diaria (todas las series)",
+        "valor": 0.25519757400002163,
+        "condicion": "<= 5",
+        "unidad": "s",
+        "cumple": true
+      }
+    ],
+    "fecha_cambio_temporada": "2026-09-01",
+    "monitoreo": {
+      "rmae_movil": {
+        "valor": 0.6319497114569059,
+        "ventana_dias": 20,
+        "limite": 0.9,
+        "dias_seguidos": 10,
+        "alerta": false,
+        "accion": "Revisar el modelo y las reglas de clasificación"
+      },
+      "cobertura_movil": {
+        "valor": 86.71052631578947,
+        "ventana_dias": 40,
+        "rango": [
+          65.0,
+          95.0
+        ],
+        "alerta": false,
+        "accion": "Recalibrar el intervalo"
+      },
+      "duplicados": {
+        "valor": 0,
+        "alerta": false,
+        "accion": "Revisar el export antes de pronosticar"
+      }
+    }
+  },
+  "series": [
+    {
+      "serie": "OPERATIVO_TOTAL",
+      "descripcion": "Flujo operativo total (todos los bancos, sin tesorería)",
+      "principal": true,
+      "origen": "2026-09-30",
+      "dias": [
+        {
+          "fecha": "2026-10-01",
+          "h": 1,
+          "p10": -1220904.7656554678,
+          "p50": 2596673.956224854,
+          "p90": 6414252.6781051755,
+          "prob_deficit": 0.19168687333609957,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 2467656.285289855,
+            "rmae": 0.7588972892675098,
+            "cobertura": 79.34782608695652,
+            "sesgo": -74645.22565217398,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-02",
+          "h": 2,
+          "p10": -1316126.2672174606,
+          "p50": 2501585.5833323793,
+          "p90": 6319297.43388222,
+          "prob_deficit": 0.20052521244463645,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 2441854.1611231887,
+            "rmae": 0.7406886309647533,
+            "cobertura": 79.71014492753623,
+            "sesgo": -56415.30199275366,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-05",
+          "h": 3,
+          "p10": -1356683.9865008797,
+          "p50": 2461289.3555362565,
+          "p90": 6279262.697573393,
+          "prob_deficit": 0.20435574885930174,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 2430743.7913043476,
+            "rmae": 0.7642167882577974,
+            "cobertura": 79.71014492753623,
+            "sesgo": -27844.25536231883,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-06",
+          "h": 4,
+          "p10": -1664240.3252771986,
+          "p50": 2154140.233202455,
+          "p90": 5972520.791682109,
+          "prob_deficit": 0.23484375183152884,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 2430550.532355072,
+            "rmae": 0.7699767384831433,
+            "cobertura": 80.07246376811594,
+            "sesgo": -18931.591992753627,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-07",
+          "h": 5,
+          "p10": -1205895.986777227,
+          "p50": 2613043.8220498655,
+          "p90": 6431983.630876958,
+          "prob_deficit": 0.19027601963009927,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 2400823.2814855073,
+            "rmae": 0.7318662349972601,
+            "cobertura": 79.34782608695652,
+            "sesgo": -35751.4599637681,
+            "n": 276
+          }
+        }
+      ],
+      "acumulado": {
+        "p10": 3789164.0419909265,
+        "p50": 12326732.95034581,
+        "p90": 20864301.858700693,
+        "prob_deficit": 0.03213279791452121
+      },
+      "alerta_deficit": {
+        "activa": true,
+        "nivel": "vigilancia",
+        "dias_en_alerta": 5,
+        "primera_fecha": "2026-10-01",
+        "probabilidad_maxima": 0.23484375183152884,
+        "peor_p10": -1664240.3252771986,
+        "colchon_sugerido": 1664240.3252771986,
+        "regla": "Alerta a tesorería cuando el P10 de algún día del horizonte es menor a 0 (reporte, sección 7)",
+        "desempeno": [
+          {
+            "regla": "vigilancia (P10 < 0)",
+            "dias_alertados_pct": 87.68115942028986,
+            "precision": 0.1305785123966942,
+            "recall": 0.8777777777777778,
+            "f1": 0.22733812949640286,
+            "eventos_reales": 180,
+            "pronosticos": 1380,
+            "tasa_base_pct": 13.043478260869565
+          },
+          {
+            "regla": "media (probabilidad >= 25%)",
+            "dias_alertados_pct": 26.014492753623188,
+            "precision": 0.18384401114206128,
+            "recall": 0.36666666666666664,
+            "f1": 0.24489795918367346,
+            "eventos_reales": 180,
+            "pronosticos": 1380,
+            "tasa_base_pct": 13.043478260869565
+          },
+          {
+            "regla": "alta (P50 < 0)",
+            "dias_alertados_pct": 4.057971014492753,
+            "precision": 0.25,
+            "recall": 0.07777777777777778,
+            "f1": 0.11864406779661017,
+            "eventos_reales": 180,
+            "pronosticos": 1380,
+            "tasa_base_pct": 13.043478260869565
+          }
+        ]
+      },
+      "confianza": {
+        "disponible": true,
+        "estado_backtest": "listo",
+        "nivel": "media",
+        "umbrales_cumplidos": 5,
+        "umbrales_total": 6,
+        "alarmas_monitoreo": 0,
+        "mae_serie": 2434325.6103115943,
+        "rmae_serie": 0.7529089431422017,
+        "cobertura_serie": 79.6376811594203
+      }
+    },
+    {
+      "serie": "OPERATIVO_BBVA",
+      "descripcion": "Flujo operativo BBVA (sin tesorería)",
+      "principal": false,
+      "origen": "2026-09-30",
+      "dias": [
+        {
+          "fecha": "2026-10-01",
+          "h": 1,
+          "p10": -657029.1087339236,
+          "p50": 1426121.106020705,
+          "p90": 3509271.320775334,
+          "prob_deficit": 0.1901488160348675,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 1231700.1853985505,
+            "rmae": 0.7106911274803435,
+            "cobertura": 87.31884057971014,
+            "sesgo": -58223.33952898553,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-02",
+          "h": 2,
+          "p10": -48233.05599048245,
+          "p50": 2034917.1691815848,
+          "p90": 4118067.3943536524,
+          "prob_deficit": 0.10530704341653213,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 1233644.0222826086,
+            "rmae": 0.7305139504585587,
+            "cobertura": 87.31884057971014,
+            "sesgo": -49180.580978260885,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-05",
+          "h": 3,
+          "p10": -458674.20979263657,
+          "p50": 1624476.0257982363,
+          "p90": 3707626.2613891093,
+          "prob_deficit": 0.15880635537135995,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 1224465.6951449276,
+            "rmae": 0.7168009245006313,
+            "cobertura": 87.68115942028986,
+            "sesgo": -41834.352463768104,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-06",
+          "h": 4,
+          "p10": -549629.6303765664,
+          "p50": 1533520.615634219,
+          "p90": 3616670.8616450047,
+          "prob_deficit": 0.17273304134639206,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 1209791.6713043477,
+            "rmae": 0.7456742197016477,
+            "cobertura": 88.40579710144928,
+            "sesgo": -34058.85724637683,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-07",
+          "h": 5,
+          "p10": -407754.8750675514,
+          "p50": 1675395.3813640436,
+          "p90": 3758545.6377956383,
+          "prob_deficit": 0.15134046912898386,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 1196379.0156884058,
+            "rmae": 0.7251311461858164,
+            "cobertura": 88.40579710144928,
+            "sesgo": -44769.960833333345,
+            "n": 276
+          }
+        }
+      ],
+      "acumulado": {
+        "p10": 3636364.7638703967,
+        "p50": 8294430.297998789,
+        "p90": 12952495.83212718,
+        "prob_deficit": 0.011244450954967636
+      },
+      "alerta_deficit": {
+        "activa": true,
+        "nivel": "vigilancia",
+        "dias_en_alerta": 5,
+        "primera_fecha": "2026-10-01",
+        "probabilidad_maxima": 0.1901488160348675,
+        "peor_p10": -657029.1087339236,
+        "colchon_sugerido": 657029.1087339236,
+        "regla": "Alerta a tesorería cuando el P10 de algún día del horizonte es menor a 0 (reporte, sección 7)",
+        "desempeno": [
+          {
+            "regla": "vigilancia (P10 < 0)",
+            "dias_alertados_pct": 97.68115942028986,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null,
+            "eventos_reales": 0,
+            "pronosticos": 1380,
+            "tasa_base_pct": 0.0
+          },
+          {
+            "regla": "media (probabilidad >= 25%)",
+            "dias_alertados_pct": 3.260869565217391,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null,
+            "eventos_reales": 0,
+            "pronosticos": 1380,
+            "tasa_base_pct": 0.0
+          },
+          {
+            "regla": "alta (P50 < 0)",
+            "dias_alertados_pct": 0.07246376811594203,
+            "precision": 0.0,
+            "recall": null,
+            "f1": null,
+            "eventos_reales": 0,
+            "pronosticos": 1380,
+            "tasa_base_pct": 0.0
+          }
+        ]
+      },
+      "confianza": {
+        "disponible": true,
+        "estado_backtest": "listo",
+        "nivel": "media",
+        "umbrales_cumplidos": 5,
+        "umbrales_total": 6,
+        "alarmas_monitoreo": 0,
+        "mae_serie": 1219196.117963768,
+        "rmae_serie": 0.7255076429920919,
+        "cobertura_serie": 87.82608695652175
+      }
+    },
+    {
+      "serie": "OPERATIVO_HSBC",
+      "descripcion": "Flujo operativo HSBC (sin tesorería)",
+      "principal": false,
+      "origen": "2026-09-30",
+      "dias": [
+        {
+          "fecha": "2026-10-01",
+          "h": 1,
+          "p10": -1343757.1165658727,
+          "p50": 1580365.5356888676,
+          "p90": 4504488.187943608,
+          "prob_deficit": 0.24427251497562352,
+          "alerta": {
+            "nivel": "vigilancia",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 1893667.3983695654,
+            "rmae": 0.7450751615251704,
+            "cobertura": 79.71014492753623,
+            "sesgo": -66675.36989130436,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-02",
+          "h": 2,
+          "p10": -2050262.073988506,
+          "p50": 873860.5928897128,
+          "p90": 3797983.2597679314,
+          "prob_deficit": 0.35086515249341177,
+          "alerta": {
+            "nivel": "media",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 1853001.403115942,
+            "rmae": 0.7078031327555595,
+            "cobertura": 80.43478260869566,
+            "sesgo": -66611.34144927535,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-05",
+          "h": 3,
+          "p10": -1659940.8956520378,
+          "p50": 1264181.7858524693,
+          "p90": 4188304.467356976,
+          "prob_deficit": 0.2897718485680536,
+          "alerta": {
+            "nivel": "media",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 1868091.6427173915,
+            "rmae": 0.7493263055924815,
+            "cobertura": 79.71014492753623,
+            "sesgo": -69321.54206521736,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-06",
+          "h": 4,
+          "p10": -1881830.9475405966,
+          "p50": 1042291.7485929503,
+          "p90": 3966414.4447264974,
+          "prob_deficit": 0.32390600479428955,
+          "alerta": {
+            "nivel": "media",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 1869425.1817391303,
+            "rmae": 0.7713502973543928,
+            "cobertura": 80.79710144927536,
+            "sesgo": -59936.032391304354,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-07",
+          "h": 5,
+          "p10": -1569237.3955370774,
+          "p50": 1354885.3152282084,
+          "p90": 4279008.025993494,
+          "prob_deficit": 0.27632164847220436,
+          "alerta": {
+            "nivel": "media",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 1878655.0268115941,
+            "rmae": 0.7215928389295307,
+            "cobertura": 80.07246376811594,
+            "sesgo": -67725.22992753623,
+            "n": 276
+          }
+        }
+      ],
+      "acumulado": {
+        "p10": -422952.11214699224,
+        "p50": 6115584.978252208,
+        "p90": 12654122.068651408,
+        "prob_deficit": 0.11533143825217052
+      },
+      "alerta_deficit": {
+        "activa": true,
+        "nivel": "media",
+        "dias_en_alerta": 5,
+        "primera_fecha": "2026-10-01",
+        "probabilidad_maxima": 0.35086515249341177,
+        "peor_p10": -2050262.073988506,
+        "colchon_sugerido": 2050262.073988506,
+        "regla": "Alerta a tesorería cuando el P10 de algún día del horizonte es menor a 0 (reporte, sección 7)",
+        "desempeno": [
+          {
+            "regla": "vigilancia (P10 < 0)",
+            "dias_alertados_pct": 99.63768115942028,
+            "precision": 0.19127272727272726,
+            "recall": 0.9813432835820896,
+            "f1": 0.32014607425441266,
+            "eventos_reales": 268,
+            "pronosticos": 1380,
+            "tasa_base_pct": 19.420289855072465
+          },
+          {
+            "regla": "media (probabilidad >= 25%)",
+            "dias_alertados_pct": 78.91304347826087,
+            "precision": 0.20018365472910926,
+            "recall": 0.8134328358208955,
+            "f1": 0.3212969786293294,
+            "eventos_reales": 268,
+            "pronosticos": 1380,
+            "tasa_base_pct": 19.420289855072465
+          },
+          {
+            "regla": "alta (P50 < 0)",
+            "dias_alertados_pct": 13.695652173913043,
+            "precision": 0.2857142857142857,
+            "recall": 0.20149253731343283,
+            "f1": 0.23632385120350105,
+            "eventos_reales": 268,
+            "pronosticos": 1380,
+            "tasa_base_pct": 19.420289855072465
+          }
+        ]
+      },
+      "confianza": {
+        "disponible": true,
+        "estado_backtest": "listo",
+        "nivel": "media",
+        "umbrales_cumplidos": 5,
+        "umbrales_total": 6,
+        "alarmas_monitoreo": 0,
+        "mae_serie": 1872568.1305507245,
+        "rmae_serie": 0.7384160858197751,
+        "cobertura_serie": 80.14492753623188
+      }
+    },
+    {
+      "serie": "NETO_TOTAL",
+      "descripcion": "Flujo neto con tesorería (barridos, fondos y traspasos)",
+      "principal": false,
+      "origen": "2026-09-30",
+      "dias": [
+        {
+          "fecha": "2026-10-01",
+          "h": 1,
+          "p10": -7955187.64300439,
+          "p50": -600549.615077978,
+          "p90": 6754088.412848434,
+          "prob_deficit": 0.5416717435413438,
+          "alerta": {
+            "nivel": "alta",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 3338280.493623188,
+            "rmae": 0.699534383256037,
+            "cobertura": 89.13043478260869,
+            "sesgo": -14423.832318840525,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-02",
+          "h": 2,
+          "p10": -6313990.35334778,
+          "p50": 1040647.7113577062,
+          "p90": 8395285.776063193,
+          "prob_deficit": 0.42805282938456085,
+          "alerta": {
+            "nivel": "media",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 3346824.026884058,
+            "rmae": 0.6919619117716499,
+            "cobertura": 88.76811594202898,
+            "sesgo": -5573.012391304344,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-05",
+          "h": 3,
+          "p10": -8245112.808910292,
+          "p50": -890474.7074210253,
+          "p90": 6464163.394068241,
+          "prob_deficit": 0.56165474627759,
+          "alerta": {
+            "nivel": "alta",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 3360919.613731884,
+            "rmae": 0.7077779922050089,
+            "cobertura": 88.76811594202898,
+            "sesgo": -9551.221123188381,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-06",
+          "h": 4,
+          "p10": -6843305.011337242,
+          "p50": 511333.1269395723,
+          "p90": 7865971.265216387,
+          "prob_deficit": 0.4645011370485138,
+          "alerta": {
+            "nivel": "media",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 3303886.553007246,
+            "rmae": 0.7076259310293854,
+            "cobertura": 89.13043478260869,
+            "sesgo": -76021.64547101443,
+            "n": 276
+          }
+        },
+        {
+          "fecha": "2026-10-07",
+          "h": 5,
+          "p10": -7402176.022717612,
+          "p50": -47537.84765023753,
+          "p90": 7307100.327417137,
+          "prob_deficit": 0.5033046037208113,
+          "alerta": {
+            "nivel": "alta",
+            "activa": true
+          },
+          "confianza": {
+            "mae": 3277456.743514493,
+            "rmae": 0.7004909725653053,
+            "cobertura": 89.4927536231884,
+            "sesgo": -62808.24409420288,
+            "n": 276
+          }
+        }
+      ],
+      "acumulado": {
+        "p10": -16432052.076700468,
+        "p50": 13418.668148037716,
+        "p90": 16458889.412996542,
+        "prob_deficit": 0.49958283374051365
+      },
+      "alerta_deficit": {
+        "activa": true,
+        "nivel": "alta",
+        "dias_en_alerta": 5,
+        "primera_fecha": "2026-10-01",
+        "probabilidad_maxima": 0.56165474627759,
+        "peor_p10": -8245112.808910292,
+        "colchon_sugerido": 8245112.808910292,
+        "regla": "Alerta a tesorería cuando el P10 de algún día del horizonte es menor a 0 (reporte, sección 7)",
+        "desempeno": [
+          {
+            "regla": "vigilancia (P10 < 0)",
+            "dias_alertados_pct": 100.0,
+            "precision": 0.08188405797101449,
+            "recall": 1.0,
+            "f1": 0.15137307434695244,
+            "eventos_reales": 113,
+            "pronosticos": 1380,
+            "tasa_base_pct": 8.18840579710145
+          },
+          {
+            "regla": "media (probabilidad >= 25%)",
+            "dias_alertados_pct": 98.91304347826086,
+            "precision": 0.08058608058608059,
+            "recall": 0.9734513274336283,
+            "f1": 0.14884979702300408,
+            "eventos_reales": 113,
+            "pronosticos": 1380,
+            "tasa_base_pct": 8.18840579710145
+          },
+          {
+            "regla": "alta (P50 < 0)",
+            "dias_alertados_pct": 48.11594202898551,
+            "precision": 0.08283132530120482,
+            "recall": 0.48672566371681414,
+            "f1": 0.14157014157014156,
+            "eventos_reales": 113,
+            "pronosticos": 1380,
+            "tasa_base_pct": 8.18840579710145
+          }
+        ]
+      },
+      "confianza": {
+        "disponible": true,
+        "estado_backtest": "listo",
+        "nivel": "media",
+        "umbrales_cumplidos": 5,
+        "umbrales_total": 6,
+        "alarmas_monitoreo": 0,
+        "mae_serie": 3325473.4861521735,
+        "rmae_serie": 0.7014231767029073,
+        "cobertura_serie": 89.05797101449275
+      }
+    }
+  ]
+}

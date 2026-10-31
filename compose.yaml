@@ -1,0 +1,19 @@
+# docker compose up --build   ->  dashboard en http://localhost:8000/
+services:
+  api:
+    build: .
+    image: predictor-flujo-efectivo
+    ports:
+      - "8000:8000"
+    environment:
+      FLUJO_MODELO: ETS
+      # Para usar otro JSON de movimientos, ponlo en ./datos y descomenta las dos líneas marcadas:
+      # FLUJO_DATOS: /datos/movimientos.json
+    volumes:
+      - ./salidas:/app/salidas          # aquí aparece el reporte JSON que escribe la API
+      - cache:/app/api_cache            # backtest calculado para datos nuevos; se conserva entre arranques
+      # - ./datos:/datos:ro
+    restart: unless-stopped
+
+volumes:
+  cache:

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pronóstico de flujo de efectivo</title>
+  <meta name="description" content="Dashboard que consume la API del predictor: P10, P50 y P90 por día, alerta de déficit y confianza del modelo.">
+  <link rel="preload" href="fuentes/atkinson-hyperlegible-next-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314212e'/%3E%3Cpath d='M5 19h22' stroke='%23d03b3b' stroke-width='2'/%3E%3Cpath d='M6 15l6-5 5 4 9-7' fill='none' stroke='%233987e5' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="saltar" href="#principal">Ir al pronóstico</a>
+
+  <header class="cabecera">
+    <div class="cabecera__titulo">
+      <h1>Flujo de efectivo de los próximos días hábiles</h1>
+      <p id="contexto" class="cabecera__contexto">Conectando con la API…</p>
+    </div>
+    <div id="conexion" class="conexion" data-estado="pendiente" role="status" aria-live="polite">
+      <span class="conexion__punto" aria-hidden="true"></span>
+      <span id="conexion-texto">Conectando…</span>
+    </div>
+  </header>
+
+  <form id="filtros" class="filtros" aria-label="Qué pronóstico ver">
+    <label class="campo">
+      <span>Serie</span>
+      <select id="sel-serie" disabled></select>
+    </label>
+    <label class="campo">
+      <span>Modelo</span>
+      <select id="sel-modelo" disabled></select>
+    </label>
+    <p id="descripcion-serie" class="filtros__nota"></p>
+    <div class="exportar" role="group" aria-labelledby="exportar-titulo">
+      <span id="exportar-titulo" class="exportar__titulo">Pronóstico completo en JSON</span>
+      <div class="exportar__acciones">
+        <a id="descargar-json" class="boton" href="api/v1/reporte?descargar=true" download>Descargar</a>
+        <button id="guardar-json" type="button" class="boton boton--secundario" disabled>Guardar en el servidor</button>
+      </div>
+      <p id="exportar-estado" class="exportar__estado" aria-live="polite"></p>
+    </div>
+  </form>
+
+  <div id="error" class="error" role="alert" hidden>
+    <p id="error-texto"></p>
+    <button id="reintentar" type="button">Reintentar</button>
+  </div>
+
+  <main id="principal" data-estado="cargando">
+    <section id="alerta" class="alerta" data-nivel="ninguna" aria-live="polite" aria-labelledby="alerta-titulo">
+      <span class="alerta__icono" aria-hidden="true"></span>
+      <div class="alerta__texto">
+        <h2 id="alerta-titulo">Revisando el riesgo de déficit…</h2>
+        <p id="alerta-detalle"></p>
+      </div>
+      <dl class="alerta__colchon">
+        <dt>Colchón sugerido</dt>
+        <dd id="colchon">—</dd>
+      </dl>
+    </section>
+
+    <div class="vista">
+      <figure class="lamina" aria-labelledby="grafica-titulo">
+        <figcaption>
+          <h2 id="grafica-titulo">Real y pronóstico, millones de MXN</h2>
+          <p id="grafica-nota">Últimos 30 días hábiles observados y los días pronosticados.</p>
+        </figcaption>
+        <ul class="leyenda" aria-label="Leyenda">
+          <li><span class="clave clave--real" aria-hidden="true"></span>Real</li>
+          <li><span class="clave clave--p50" aria-hidden="true"></span>Pronóstico (P50)</li>
+          <li><span class="clave clave--banda" aria-hidden="true"></span>Rango P10 a P90</li>
+          <li><span class="clave clave--deficit" aria-hidden="true"></span>Bajo cero (déficit)</li>
+        </ul>
+        <div id="grafica" class="grafica" role="img" aria-describedby="grafica-nota"></div>
+        <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+      </figure>
+
+      <aside class="resumen" aria-label="Resumen del horizonte">
+        <div class="cifra">
+          <p class="cifra__etiqueta" id="acum-etiqueta">Flujo esperado del horizonte</p>
+          <p class="cifra__valor" id="acum-p50">—</p>
+          <p class="cifra__rango" id="acum-rango"></p>
+        </div>
+        <dl class="datos">
+          <div><dt>Probabilidad de déficit del horizonte</dt><dd id="acum-prob">—</dd></div>
+          <div><dt>Día con más riesgo</dt><dd id="dia-riesgo">—</dd></div>
+          <div><dt>Confianza del modelo</dt><dd id="confianza-nivel">—</dd></div>
+          <div><dt>Error típico en esta serie (MAE)</dt><dd id="mae-serie">—</dd></div>
+        </dl>
+      </aside>
+    </div>
+
+    <section class="bloque" aria-labelledby="tabla-titulo">
+      <h2 id="tabla-titulo">Pronóstico por día</h2>
+      <div class="tabla-envoltura">
+        <table class="tabla" id="tabla-dias">
+          <thead>
+            <tr>
+              <th scope="col">Fecha</th>
+              <th scope="col" class="num">P10</th>
+              <th scope="col" class="num">P50</th>
+              <th scope="col" class="num">P90</th>
+              <th scope="col" class="num">Prob. de déficit</th>
+              <th scope="col">Alerta</th>
+              <th scope="col" class="num">MAE histórico</th>
+              <th scope="col" class="num">Cobertura histórica</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="pie-tabla">Millones de MXN. El MAE y la cobertura salen del backtest walk-forward para el mismo modelo, serie y día del horizonte; la cobertura ideal del rango P10 a P90 es 80 %.</p>
+      <details class="detalles">
+        <summary>Ver los datos observados de la gráfica</summary>
+        <div class="tabla-envoltura">
+          <table class="tabla tabla--compacta" id="tabla-historia">
+            <thead><tr><th scope="col">Fecha</th><th scope="col" class="num">Real</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <div class="doble">
+      <section class="bloque" aria-labelledby="umbrales-titulo">
+        <h2 id="umbrales-titulo">¿Se puede confiar en el modelo?</h2>
+        <p class="bloque__nota" id="umbrales-nota">Umbrales de aceptación del reporte técnico, medidos en el backtest de todas las series.</p>
+        <ul id="umbrales" class="lista-umbrales"></ul>
+      </section>
+
+      <section class="bloque" aria-labelledby="monitoreo-titulo">
+        <h2 id="monitoreo-titulo">Monitoreo de la serie</h2>
+        <p class="bloque__nota">Avisos para revisar el modelo o recalibrar el intervalo.</p>
+        <div id="monitoreo" class="monitoreo"></div>
+      </section>
+    </div>
+
+    <section class="bloque" aria-labelledby="reglas-titulo">
+      <h2 id="reglas-titulo">Qué tan bien anticipó los déficits en el backtest</h2>
+      <p class="bloque__nota" id="reglas-nota"></p>
+      <div class="tabla-envoltura">
+        <table class="tabla" id="tabla-reglas">
+          <thead>
+            <tr>
+              <th scope="col">Nivel de alerta</th>
+              <th scope="col" class="num">Días que alertó</th>
+              <th scope="col" class="num">Precisión</th>
+              <th scope="col" class="num">Recall</th>
+              <th scope="col" class="num">F1</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="doble">
+      <section class="bloque" aria-labelledby="series-titulo">
+        <h2 id="series-titulo">Alerta en todas las series</h2>
+        <div class="tabla-envoltura">
+          <table class="tabla" id="tabla-series">
+            <thead>
+              <tr>
+                <th scope="col">Serie</th>
+                <th scope="col">Alerta</th>
+                <th scope="col" class="num">Peor P10</th>
+                <th scope="col" class="num">Prob. máx.</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="bloque" aria-labelledby="modelos-titulo">
+        <h2 id="modelos-titulo">Modelos disponibles</h2>
+        <div class="tabla-envoltura">
+          <table class="tabla" id="tabla-modelos">
+            <thead>
+              <tr>
+                <th scope="col">Modelo</th>
+                <th scope="col" class="num">MAE</th>
+                <th scope="col" class="num">rMAE</th>
+                <th scope="col" class="num">Cobertura</th>
+                <th scope="col" class="num">Umbrales</th>
+                <th scope="col" class="num">Latencia</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="pie-tabla" id="modelos-nota">Calculando los pronósticos de cada modelo…</p>
+      </section>
+    </div>
+  </main>
+
+  <footer class="pie">
+    <details class="detalles" id="registro-detalles">
+      <summary>Comunicación con la API: <span id="registro-resumen">sin peticiones todavía</span></summary>
+      <div class="tabla-envoltura">
+        <table class="tabla tabla--compacta" id="tabla-registro">
+          <thead>
+            <tr>
+              <th scope="col">Hora</th>
+              <th scope="col">Método</th>
+              <th scope="col">Recurso</th>
+              <th scope="col" class="num">Estado</th>
+              <th scope="col" class="num">Total</th>
+              <th scope="col" class="num">Servidor</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </details>
+    <p class="pie__enlaces"><a id="enlace-docs" href="docs">Contrato de la API (OpenAPI)</a> <span id="version-api"></span> <a id="enlace-repo" href="#" hidden>Código en GitHub</a></p>
+  </footer>
+</body>
+</html>

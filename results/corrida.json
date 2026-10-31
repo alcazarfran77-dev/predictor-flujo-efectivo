@@ -1,0 +1,78 @@
+{
+  "fecha": "2026-10-11T11:12:26",
+  "archivo": "DEPOSITOS_CARGADOS_FEBAN_sep2025_sep2026_anon.xlsx",
+  "huella": "f3b5b125854fa666464d14b59fa17b5c3926cce247b7cb660320ccc20cfc45b1",
+  "huella_series": "05b682222f318e4d315b116fe8b0108edb104a5f589e08b7b585bd383071cdc2",
+  "dispositivo": "cpu",
+  "modelos": [
+    "ETS",
+    "SARIMAX",
+    "SARIMAX + temporada",
+    "Naive (referencia)"
+  ],
+  "familias": {
+    "ETS": "Estadístico",
+    "SARIMAX": "Estadístico",
+    "SARIMAX + temporada": "Estadístico",
+    "Naive (referencia)": "Referencia"
+  },
+  "parametros": {
+    "horizonte": 5,
+    "max_origenes": 280,
+    "origenes": 276,
+    "min_contexto": 3,
+    "cuantiles": [
+      0.1,
+      0.5,
+      0.9
+    ],
+    "fecha_corte": "2026-09-01",
+    "sarimax_reestimar_cada": 5,
+    "min_dias_temporada": 10,
+    "meses_ingreso_alto": [
+      1,
+      2,
+      3
+    ],
+    "meses_gasto_alto": [
+      9,
+      10,
+      11,
+      12
+    ]
+  },
+  "datos": {
+    "filas": 4804,
+    "movimientos_unicos": 4804,
+    "dias_habiles": 283,
+    "desde": "2025-09-01",
+    "hasta": "2026-09-30",
+    "series": [
+      "OPERATIVO_TOTAL",
+      "OPERATIVO_BBVA",
+      "OPERATIVO_HSBC",
+      "NETO_TOTAL"
+    ]
+  },
+  "pronosticos_por_modelo": 5520,
+  "duracion_backtest_s": {
+    "ETS": 59.0,
+    "SARIMAX": 80.3,
+    "SARIMAX + temporada": 108.0,
+    "Naive (referencia)": 4.8
+  },
+  "duracion_total_s": 425.3,
+  "versiones": {
+    "chronos-forecasting": "2.3.2",
+    "transformers": "4.57.6",
+    "accelerate": "1.15.0",
+    "torch": "2.14.1",
+    "huggingface_hub": "0.36.2",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3",
+    "statsmodels": "0.15.0",
+    "scikit-learn": "1.9.1",
+    "matplotlib": "3.11.2",
+    "openpyxl": "3.1.5"
+  }
+}

@@ -1,0 +1,13 @@
+evento,modelo,accuracy,precision,recall,F1,VP,FP,FN,VN,n
+Dirección (sube vs. último dato),ETS,0.705072,0.720385,0.675198,0.697060,1873,727,901,2019,5520
+Dirección (sube vs. último dato),SARIMAX,0.697645,0.719159,0.653569,0.684797,1813,708,961,2038,5520
+Dirección (sube vs. último dato),SARIMAX + temporada,0.702899,0.722353,0.664023,0.691961,1842,708,932,2038,5520
+Dirección (sube vs. último dato),Naive (referencia),0.497464,,0.000000,0.000000,0,0,2774,2746,5520
+Flujo alto (> mediana histórica),ETS,0.484964,0.506704,0.563063,0.533399,1625,1582,1261,1052,5520
+Flujo alto (> mediana histórica),SARIMAX,0.464674,0.488396,0.503119,0.495648,1452,1521,1434,1113,5520
+Flujo alto (> mediana histórica),SARIMAX + temporada,0.509783,0.531142,0.531878,0.531510,1535,1355,1351,1279,5520
+Flujo alto (> mediana histórica),Naive (referencia),0.494203,0.516376,0.513514,0.514941,1482,1388,1404,1246,5520
+Déficit (flujo neto < 0),ETS,0.778080,0.135165,0.219251,0.167233,123,787,438,4172,5520
+Déficit (flujo neto < 0),SARIMAX,0.775362,0.136898,0.228164,0.171123,128,807,433,4152,5520
+Déficit (flujo neto < 0),SARIMAX + temporada,0.769203,0.145978,0.262032,0.187500,147,860,414,4099,5520
+Déficit (flujo neto < 0),Naive (referencia),0.826630,0.146429,0.146168,0.146298,82,478,479,4481,5520

@@ -1,0 +1,2503 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "API del predictor de flujo de efectivo",
+  "description": "Pronóstico diario de flujo de efectivo con cuantiles P10, P50 y P90, alerta de déficit y métricas de confianza del backtest walk-forward. Montos en pesos mexicanos (MXN).",
+  "version": "1.1.0"
+ },
+ "paths": {
+  "/api/v1/salud": {
+   "get": {
+    "summary": "Estado del servicio, datos cargados y modelos",
+    "operationId": "salud_api_v1_salud_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Salud"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/series": {
+   "get": {
+    "summary": "Series diarias disponibles",
+    "operationId": "series_api_v1_series_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/Serie"
+         },
+         "type": "array",
+         "title": "Response Series Api V1 Series Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/series/{serie}/historia": {
+   "get": {
+    "summary": "Valores diarios observados",
+    "operationId": "historia_api_v1_series__serie__historia_get",
+    "parameters": [
+     {
+      "name": "serie",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Serie"
+      }
+     },
+     {
+      "name": "dias",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 400,
+       "minimum": 5,
+       "default": 60,
+       "title": "Dias"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Historia"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/pronostico": {
+   "get": {
+    "summary": "P10, P50 y P90 por día, alerta de déficit y confianza de una serie",
+    "operationId": "pronostico_api_v1_pronostico_get",
+    "parameters": [
+     {
+      "name": "serie",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "OPERATIVO_TOTAL",
+       "title": "Serie"
+      }
+     },
+     {
+      "name": "modelo",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Modelo"
+      }
+     },
+     {
+      "name": "horizonte",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 5,
+       "minimum": 1,
+       "default": 5,
+       "title": "Horizonte"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Pronostico"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "summary": "Pronostica una serie enviada por otro sistema (sin métricas de backtest)",
+    "operationId": "pronostico_externo_api_v1_pronostico_post",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PeticionPronostico"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Pronostico"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/alertas": {
+   "get": {
+    "summary": "Alerta de déficit de todas las series",
+    "operationId": "alertas_api_v1_alertas_get",
+    "parameters": [
+     {
+      "name": "modelo",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Modelo"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/AlertaSerie"
+         },
+         "title": "Response Alertas Api V1 Alertas Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/metricas": {
+   "get": {
+    "summary": "Métricas de confianza, umbrales y monitoreo",
+    "operationId": "metricas_api_v1_metricas_get",
+    "parameters": [
+     {
+      "name": "modelo",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Modelo"
+      }
+     },
+     {
+      "name": "serie",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "OPERATIVO_TOTAL",
+       "title": "Serie"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Metricas"
+        }
+       }
+      }
+     },
+     "503": {
+      "description": "El backtest del modelo todavía se está calculando"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/modelos": {
+   "get": {
+    "summary": "Modelos lado a lado con los criterios de aceptación y de cambio de modelo",
+    "operationId": "modelos_api_v1_modelos_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ComparacionModelo"
+         },
+         "type": "array",
+         "title": "Response Modelos Api V1 Modelos Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/reporte": {
+   "get": {
+    "summary": "Pronóstico completo de un modelo (todas las series, alertas y confianza) en un solo JSON",
+    "operationId": "reporte_api_v1_reporte_get",
+    "parameters": [
+     {
+      "name": "modelo",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Modelo"
+      }
+     },
+     {
+      "name": "descargar",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "description": "true = responde como archivo para guardar",
+       "default": false,
+       "title": "Descargar"
+      },
+      "description": "true = responde como archivo para guardar"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Reporte"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "summary": "Escribe el reporte JSON en la carpeta de salidas del servidor",
+    "operationId": "guardar_reporte_api_v1_reporte_post",
+    "parameters": [
+     {
+      "name": "modelo",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Modelo"
+      }
+     }
+    ],
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ArchivoGenerado"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/datos/validar": {
+   "post": {
+    "summary": "Revisa un JSON de movimientos sin cargarlo: errores por movimiento y campo, y avisos",
+    "operationId": "validar_datos_api_v1_datos_validar_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "title": "Contenido",
+        "description": "Objeto con 'movimientos' o lista de movimientos"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Validacion"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/datos/validacion": {
+   "get": {
+    "summary": "Resultado de la validación del archivo cargado",
+    "operationId": "validacion_cargada_api_v1_datos_validacion_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Validacion"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "Acumulado": {
+    "properties": {
+     "p10": {
+      "type": "number",
+      "title": "P10"
+     },
+     "p50": {
+      "type": "number",
+      "title": "P50"
+     },
+     "p90": {
+      "type": "number",
+      "title": "P90"
+     },
+     "prob_deficit": {
+      "type": "number",
+      "title": "Prob Deficit"
+     }
+    },
+    "type": "object",
+    "required": [
+     "p10",
+     "p50",
+     "p90",
+     "prob_deficit"
+    ],
+    "title": "Acumulado"
+   },
+   "AlertaDeficit": {
+    "properties": {
+     "activa": {
+      "type": "boolean",
+      "title": "Activa"
+     },
+     "nivel": {
+      "type": "string",
+      "enum": [
+       "ninguna",
+       "vigilancia",
+       "media",
+       "alta"
+      ],
+      "title": "Nivel"
+     },
+     "regla": {
+      "type": "string",
+      "title": "Regla"
+     },
+     "dias_en_alerta": {
+      "type": "integer",
+      "title": "Dias En Alerta"
+     },
+     "primera_fecha": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Primera Fecha"
+     },
+     "probabilidad_maxima": {
+      "type": "number",
+      "title": "Probabilidad Maxima"
+     },
+     "peor_p10": {
+      "type": "number",
+      "title": "Peor P10"
+     },
+     "colchon_sugerido": {
+      "type": "number",
+      "title": "Colchon Sugerido",
+      "description": "Efectivo que cubre el peor P10 del horizonte, en MXN"
+     },
+     "desempeno": {
+      "items": {
+       "$ref": "#/components/schemas/DesempenoRegla"
+      },
+      "type": "array",
+      "title": "Desempeno",
+      "description": "Cómo funcionó cada nivel de alerta en el backtest"
+     }
+    },
+    "type": "object",
+    "required": [
+     "activa",
+     "nivel",
+     "regla",
+     "dias_en_alerta",
+     "primera_fecha",
+     "probabilidad_maxima",
+     "peor_p10",
+     "colchon_sugerido",
+     "desempeno"
+    ],
+    "title": "AlertaDeficit"
+   },
+   "AlertaDia": {
+    "properties": {
+     "nivel": {
+      "type": "string",
+      "enum": [
+       "ninguna",
+       "vigilancia",
+       "media",
+       "alta"
+      ],
+      "title": "Nivel"
+     },
+     "activa": {
+      "type": "boolean",
+      "title": "Activa"
+     }
+    },
+    "type": "object",
+    "required": [
+     "nivel",
+     "activa"
+    ],
+    "title": "AlertaDia"
+   },
+   "AlertaSerie": {
+    "properties": {
+     "serie": {
+      "type": "string",
+      "title": "Serie"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "principal": {
+      "type": "boolean",
+      "title": "Principal"
+     },
+     "activa": {
+      "type": "boolean",
+      "title": "Activa"
+     },
+     "nivel": {
+      "type": "string",
+      "enum": [
+       "ninguna",
+       "vigilancia",
+       "media",
+       "alta"
+      ],
+      "title": "Nivel"
+     },
+     "dias_en_alerta": {
+      "type": "integer",
+      "title": "Dias En Alerta"
+     },
+     "primera_fecha": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Primera Fecha"
+     },
+     "probabilidad_maxima": {
+      "type": "number",
+      "title": "Probabilidad Maxima"
+     },
+     "peor_p10": {
+      "type": "number",
+      "title": "Peor P10"
+     },
+     "colchon_sugerido": {
+      "type": "number",
+      "title": "Colchon Sugerido"
+     },
+     "p50_acumulado": {
+      "type": "number",
+      "title": "P50 Acumulado"
+     }
+    },
+    "type": "object",
+    "required": [
+     "serie",
+     "descripcion",
+     "principal",
+     "activa",
+     "nivel",
+     "dias_en_alerta",
+     "primera_fecha",
+     "probabilidad_maxima",
+     "peor_p10",
+     "colchon_sugerido",
+     "p50_acumulado"
+    ],
+    "title": "AlertaSerie"
+   },
+   "ArchivoGenerado": {
+    "properties": {
+     "archivo": {
+      "type": "string",
+      "title": "Archivo",
+      "description": "Ruta del archivo en el servidor, relativa al repositorio"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "bytes": {
+      "type": "integer",
+      "title": "Bytes"
+     },
+     "modelo": {
+      "type": "string",
+      "title": "Modelo"
+     },
+     "generado": {
+      "type": "string",
+      "title": "Generado"
+     },
+     "series": {
+      "type": "integer",
+      "title": "Series"
+     }
+    },
+    "type": "object",
+    "required": [
+     "archivo",
+     "nombre",
+     "bytes",
+     "modelo",
+     "generado",
+     "series"
+    ],
+    "title": "ArchivoGenerado"
+   },
+   "ComparacionModelo": {
+    "properties": {
+     "modelo": {
+      "type": "string",
+      "title": "Modelo"
+     },
+     "familia": {
+      "type": "string",
+      "title": "Familia"
+     },
+     "recomendado": {
+      "type": "boolean",
+      "title": "Recomendado"
+     },
+     "estado_backtest": {
+      "type": "string",
+      "title": "Estado Backtest"
+     },
+     "latencia_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latencia Ms"
+     },
+     "mae": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mae"
+     },
+     "rmae": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rmae"
+     },
+     "wql": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wql"
+     },
+     "cobertura": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cobertura"
+     },
+     "f1_direccion": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "F1 Direccion"
+     },
+     "mae_desde_corte": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mae Desde Corte"
+     },
+     "umbrales_cumplidos": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Umbrales Cumplidos"
+     },
+     "umbrales_total": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Umbrales Total"
+     },
+     "nivel_confianza": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "alta",
+         "media",
+         "baja"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nivel Confianza"
+     },
+     "mae_vs_recomendado": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mae Vs Recomendado"
+     },
+     "reemplaza_al_recomendado": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reemplaza Al Recomendado"
+     }
+    },
+    "type": "object",
+    "required": [
+     "modelo",
+     "familia",
+     "recomendado",
+     "estado_backtest"
+    ],
+    "title": "ComparacionModelo"
+   },
+   "ConfianzaDia": {
+    "properties": {
+     "mae": {
+      "type": "number",
+      "title": "Mae",
+      "description": "MAE del backtest para este horizonte y serie, en MXN"
+     },
+     "rmae": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rmae",
+      "description": "MAE dividido entre el del pronóstico ingenuo"
+     },
+     "cobertura": {
+      "type": "number",
+      "title": "Cobertura",
+      "description": "% de valores reales dentro de P10–P90 en el backtest"
+     },
+     "sesgo": {
+      "type": "number",
+      "title": "Sesgo"
+     },
+     "n": {
+      "type": "integer",
+      "title": "N"
+     }
+    },
+    "type": "object",
+    "required": [
+     "mae",
+     "rmae",
+     "cobertura",
+     "sesgo",
+     "n"
+    ],
+    "title": "ConfianzaDia"
+   },
+   "ConfianzaModelo": {
+    "properties": {
+     "disponible": {
+      "type": "boolean",
+      "title": "Disponible"
+     },
+     "estado_backtest": {
+      "type": "string",
+      "title": "Estado Backtest"
+     },
+     "nivel": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "alta",
+         "media",
+         "baja"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nivel"
+     },
+     "origenes": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origenes"
+     },
+     "periodo_backtest": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Periodo Backtest"
+     },
+     "metricas": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MetricasBasicas"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "desde_corte": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MetricasBasicas"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "fecha_corte": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Corte"
+     },
+     "umbrales": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/Umbral"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Umbrales"
+     },
+     "fecha_cambio_temporada": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Cambio Temporada"
+     },
+     "monitoreo": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "$ref": "#/components/schemas/MonitorResumen"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Monitoreo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "disponible",
+     "estado_backtest"
+    ],
+    "title": "ConfianzaModelo"
+   },
+   "DesempenoRegla": {
+    "properties": {
+     "regla": {
+      "type": "string",
+      "title": "Regla"
+     },
+     "dias_alertados_pct": {
+      "type": "number",
+      "title": "Dias Alertados Pct"
+     },
+     "precision": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Precision"
+     },
+     "recall": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recall"
+     },
+     "f1": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "F1"
+     },
+     "eventos_reales": {
+      "type": "integer",
+      "title": "Eventos Reales"
+     },
+     "pronosticos": {
+      "type": "integer",
+      "title": "Pronosticos"
+     },
+     "tasa_base_pct": {
+      "type": "number",
+      "title": "Tasa Base Pct"
+     }
+    },
+    "type": "object",
+    "required": [
+     "regla",
+     "dias_alertados_pct",
+     "precision",
+     "recall",
+     "f1",
+     "eventos_reales",
+     "pronosticos",
+     "tasa_base_pct"
+    ],
+    "title": "DesempenoRegla"
+   },
+   "DiaPronostico": {
+    "properties": {
+     "fecha": {
+      "type": "string",
+      "title": "Fecha"
+     },
+     "h": {
+      "type": "integer",
+      "title": "H",
+      "description": "Días hábiles después del último dato"
+     },
+     "p10": {
+      "type": "number",
+      "title": "P10"
+     },
+     "p50": {
+      "type": "number",
+      "title": "P50"
+     },
+     "p90": {
+      "type": "number",
+      "title": "P90"
+     },
+     "prob_deficit": {
+      "type": "number",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Prob Deficit"
+     },
+     "alerta": {
+      "$ref": "#/components/schemas/AlertaDia"
+     },
+     "confianza": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ConfianzaDia"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "fecha",
+     "h",
+     "p10",
+     "p50",
+     "p90",
+     "prob_deficit",
+     "alerta",
+     "confianza"
+    ],
+    "title": "DiaPronostico"
+   },
+   "ErrorValidacion": {
+    "properties": {
+     "fila": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fila",
+      "description": "Número de movimiento (desde 1); vacío si el problema es del archivo"
+     },
+     "campo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campo"
+     },
+     "mensaje": {
+      "type": "string",
+      "title": "Mensaje"
+     }
+    },
+    "type": "object",
+    "required": [
+     "fila",
+     "campo",
+     "mensaje"
+    ],
+    "title": "ErrorValidacion"
+   },
+   "EstadoModelo": {
+    "properties": {
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "familia": {
+      "type": "string",
+      "title": "Familia"
+     },
+     "backtest": {
+      "type": "string",
+      "title": "Backtest",
+      "description": "listo, calculando, pendiente o error"
+     }
+    },
+    "type": "object",
+    "required": [
+     "nombre",
+     "familia",
+     "backtest"
+    ],
+    "title": "EstadoModelo"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "Historia": {
+    "properties": {
+     "serie": {
+      "type": "string",
+      "title": "Serie"
+     },
+     "puntos": {
+      "items": {
+       "$ref": "#/components/schemas/Punto"
+      },
+      "type": "array",
+      "title": "Puntos"
+     }
+    },
+    "type": "object",
+    "required": [
+     "serie",
+     "puntos"
+    ],
+    "title": "Historia"
+   },
+   "InfoDatos": {
+    "properties": {
+     "archivo": {
+      "type": "string",
+      "title": "Archivo"
+     },
+     "formato": {
+      "type": "string",
+      "title": "Formato",
+      "default": "json"
+     },
+     "huella": {
+      "type": "string",
+      "title": "Huella",
+      "description": "Primeros 16 caracteres del SHA-256 de las series diarias"
+     },
+     "desde": {
+      "type": "string",
+      "title": "Desde"
+     },
+     "hasta": {
+      "type": "string",
+      "title": "Hasta"
+     },
+     "dias_habiles": {
+      "type": "integer",
+      "title": "Dias Habiles"
+     },
+     "movimientos": {
+      "type": "integer",
+      "title": "Movimientos"
+     },
+     "duplicados": {
+      "type": "integer",
+      "title": "Duplicados"
+     },
+     "avisos": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Avisos",
+      "description": "Avisos de la validación del archivo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "archivo",
+     "huella",
+     "desde",
+     "hasta",
+     "dias_habiles",
+     "movimientos",
+     "duplicados"
+    ],
+    "title": "InfoDatos"
+   },
+   "Metricas": {
+    "properties": {
+     "modelo": {
+      "type": "string",
+      "title": "Modelo"
+     },
+     "serie": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Serie"
+     },
+     "disponible": {
+      "type": "boolean",
+      "title": "Disponible"
+     },
+     "origenes": {
+      "type": "integer",
+      "title": "Origenes"
+     },
+     "periodo_backtest": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Periodo Backtest"
+     },
+     "todas_las_series": {
+      "$ref": "#/components/schemas/MetricasBasicas"
+     },
+     "serie_metricas": {
+      "$ref": "#/components/schemas/MetricasBasicas"
+     },
+     "desde_corte": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MetricasBasicas"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "fecha_corte": {
+      "type": "string",
+      "title": "Fecha Corte"
+     },
+     "por_horizonte": {
+      "items": {
+       "$ref": "#/components/schemas/MetricasHorizonte"
+      },
+      "type": "array",
+      "title": "Por Horizonte"
+     },
+     "umbrales": {
+      "items": {
+       "$ref": "#/components/schemas/Umbral"
+      },
+      "type": "array",
+      "title": "Umbrales",
+      "description": "Umbrales de aceptación del reporte, sobre todas las series"
+     },
+     "fecha_cambio_temporada": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Cambio Temporada"
+     },
+     "monitoreo": {
+      "$ref": "#/components/schemas/Monitoreo",
+      "description": "Disparadores de revisión, sobre la serie consultada"
+     },
+     "reglas_deficit": {
+      "items": {
+       "$ref": "#/components/schemas/DesempenoRegla"
+      },
+      "type": "array",
+      "title": "Reglas Deficit"
+     },
+     "nivel_confianza": {
+      "type": "string",
+      "enum": [
+       "alta",
+       "media",
+       "baja"
+      ],
+      "title": "Nivel Confianza"
+     },
+     "fallas": {
+      "type": "integer",
+      "title": "Fallas"
+     },
+     "alarmas": {
+      "type": "integer",
+      "title": "Alarmas"
+     }
+    },
+    "type": "object",
+    "required": [
+     "modelo",
+     "serie",
+     "disponible",
+     "origenes",
+     "periodo_backtest",
+     "todas_las_series",
+     "serie_metricas",
+     "desde_corte",
+     "fecha_corte",
+     "por_horizonte",
+     "umbrales",
+     "fecha_cambio_temporada",
+     "monitoreo",
+     "reglas_deficit",
+     "nivel_confianza",
+     "fallas",
+     "alarmas"
+    ],
+    "title": "Metricas"
+   },
+   "MetricasBasicas": {
+    "properties": {
+     "mae": {
+      "type": "number",
+      "title": "Mae"
+     },
+     "rmae": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rmae"
+     },
+     "sesgo": {
+      "type": "number",
+      "title": "Sesgo"
+     },
+     "wql": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wql"
+     },
+     "cobertura": {
+      "type": "number",
+      "title": "Cobertura"
+     },
+     "f1_direccion": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "F1 Direccion"
+     },
+     "n": {
+      "type": "integer",
+      "title": "N"
+     }
+    },
+    "type": "object",
+    "required": [
+     "mae",
+     "rmae",
+     "sesgo",
+     "wql",
+     "cobertura",
+     "f1_direccion",
+     "n"
+    ],
+    "title": "MetricasBasicas"
+   },
+   "MetricasHorizonte": {
+    "properties": {
+     "mae": {
+      "type": "number",
+      "title": "Mae"
+     },
+     "rmae": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rmae"
+     },
+     "sesgo": {
+      "type": "number",
+      "title": "Sesgo"
+     },
+     "wql": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wql"
+     },
+     "cobertura": {
+      "type": "number",
+      "title": "Cobertura"
+     },
+     "f1_direccion": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "F1 Direccion"
+     },
+     "n": {
+      "type": "integer",
+      "title": "N"
+     },
+     "h": {
+      "type": "integer",
+      "title": "H"
+     }
+    },
+    "type": "object",
+    "required": [
+     "mae",
+     "rmae",
+     "sesgo",
+     "wql",
+     "cobertura",
+     "f1_direccion",
+     "n",
+     "h"
+    ],
+    "title": "MetricasHorizonte"
+   },
+   "MonitorCobertura": {
+    "properties": {
+     "valor": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Valor"
+     },
+     "ventana_dias": {
+      "type": "integer",
+      "title": "Ventana Dias"
+     },
+     "rango": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Rango"
+     },
+     "alerta": {
+      "type": "boolean",
+      "title": "Alerta"
+     },
+     "accion": {
+      "type": "string",
+      "title": "Accion"
+     },
+     "serie": {
+      "items": {
+       "$ref": "#/components/schemas/PuntoMonitoreo"
+      },
+      "type": "array",
+      "title": "Serie"
+     }
+    },
+    "type": "object",
+    "required": [
+     "valor",
+     "ventana_dias",
+     "rango",
+     "alerta",
+     "accion",
+     "serie"
+    ],
+    "title": "MonitorCobertura"
+   },
+   "MonitorDuplicados": {
+    "properties": {
+     "valor": {
+      "type": "integer",
+      "title": "Valor"
+     },
+     "alerta": {
+      "type": "boolean",
+      "title": "Alerta"
+     },
+     "accion": {
+      "type": "string",
+      "title": "Accion"
+     }
+    },
+    "type": "object",
+    "required": [
+     "valor",
+     "alerta",
+     "accion"
+    ],
+    "title": "MonitorDuplicados"
+   },
+   "MonitorResumen": {
+    "properties": {
+     "valor": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Valor"
+     },
+     "alerta": {
+      "type": "boolean",
+      "title": "Alerta"
+     },
+     "accion": {
+      "type": "string",
+      "title": "Accion"
+     },
+     "ventana_dias": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ventana Dias"
+     },
+     "limite": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Limite"
+     },
+     "dias_seguidos": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dias Seguidos"
+     },
+     "rango": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rango"
+     }
+    },
+    "type": "object",
+    "required": [
+     "valor",
+     "alerta",
+     "accion"
+    ],
+    "title": "MonitorResumen"
+   },
+   "MonitorRmae": {
+    "properties": {
+     "valor": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Valor"
+     },
+     "ventana_dias": {
+      "type": "integer",
+      "title": "Ventana Dias"
+     },
+     "limite": {
+      "type": "number",
+      "title": "Limite"
+     },
+     "dias_seguidos": {
+      "type": "integer",
+      "title": "Dias Seguidos"
+     },
+     "alerta": {
+      "type": "boolean",
+      "title": "Alerta"
+     },
+     "accion": {
+      "type": "string",
+      "title": "Accion"
+     },
+     "serie": {
+      "items": {
+       "$ref": "#/components/schemas/PuntoMonitoreo"
+      },
+      "type": "array",
+      "title": "Serie"
+     }
+    },
+    "type": "object",
+    "required": [
+     "valor",
+     "ventana_dias",
+     "limite",
+     "dias_seguidos",
+     "alerta",
+     "accion",
+     "serie"
+    ],
+    "title": "MonitorRmae"
+   },
+   "Monitoreo": {
+    "properties": {
+     "rmae_movil": {
+      "$ref": "#/components/schemas/MonitorRmae"
+     },
+     "cobertura_movil": {
+      "$ref": "#/components/schemas/MonitorCobertura"
+     },
+     "duplicados": {
+      "$ref": "#/components/schemas/MonitorDuplicados"
+     }
+    },
+    "type": "object",
+    "required": [
+     "rmae_movil",
+     "cobertura_movil",
+     "duplicados"
+    ],
+    "title": "Monitoreo"
+   },
+   "PeticionPronostico": {
+    "properties": {
+     "serie_id": {
+      "type": "string",
+      "maxLength": 64,
+      "title": "Serie Id",
+      "default": "externa"
+     },
+     "modelo": {
+      "type": "string",
+      "title": "Modelo",
+      "default": "ETS"
+     },
+     "horizonte": {
+      "type": "integer",
+      "maximum": 20.0,
+      "minimum": 1.0,
+      "title": "Horizonte",
+      "default": 5
+     },
+     "historia": {
+      "items": {
+       "$ref": "#/components/schemas/Punto"
+      },
+      "type": "array",
+      "maxItems": 5000,
+      "minItems": 10,
+      "title": "Historia"
+     }
+    },
+    "type": "object",
+    "required": [
+     "historia"
+    ],
+    "title": "PeticionPronostico",
+    "description": "Serie diaria enviada por otro sistema. Los fines de semana pasan al siguiente día hábil."
+   },
+   "Pronostico": {
+    "properties": {
+     "serie": {
+      "type": "string",
+      "title": "Serie"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "modelo": {
+      "type": "string",
+      "title": "Modelo"
+     },
+     "familia": {
+      "type": "string",
+      "title": "Familia"
+     },
+     "origen": {
+      "type": "string",
+      "title": "Origen",
+      "description": "Último día con datos"
+     },
+     "generado": {
+      "type": "string",
+      "title": "Generado"
+     },
+     "latencia_ms": {
+      "type": "number",
+      "title": "Latencia Ms",
+      "description": "Tiempo que tomó calcular el pronóstico de todas las series"
+     },
+     "en_cache": {
+      "type": "boolean",
+      "title": "En Cache"
+     },
+     "unidades": {
+      "type": "string",
+      "title": "Unidades"
+     },
+     "cuantiles": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Cuantiles"
+     },
+     "umbral_deficit": {
+      "type": "number",
+      "title": "Umbral Deficit"
+     },
+     "dias": {
+      "items": {
+       "$ref": "#/components/schemas/DiaPronostico"
+      },
+      "type": "array",
+      "title": "Dias"
+     },
+     "acumulado": {
+      "$ref": "#/components/schemas/Acumulado"
+     },
+     "alerta_deficit": {
+      "$ref": "#/components/schemas/AlertaDeficit"
+     },
+     "confianza": {
+      "$ref": "#/components/schemas/ResumenConfianza"
+     }
+    },
+    "type": "object",
+    "required": [
+     "serie",
+     "descripcion",
+     "modelo",
+     "familia",
+     "origen",
+     "generado",
+     "latencia_ms",
+     "en_cache",
+     "unidades",
+     "cuantiles",
+     "umbral_deficit",
+     "dias",
+     "acumulado",
+     "alerta_deficit",
+     "confianza"
+    ],
+    "title": "Pronostico"
+   },
+   "Punto": {
+    "properties": {
+     "fecha": {
+      "type": "string",
+      "title": "Fecha",
+      "examples": [
+       "2026-09-30"
+      ]
+     },
+     "valor": {
+      "type": "number",
+      "title": "Valor",
+      "examples": [
+       2500000.0
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "fecha",
+     "valor"
+    ],
+    "title": "Punto"
+   },
+   "PuntoMonitoreo": {
+    "properties": {
+     "fecha": {
+      "type": "string",
+      "title": "Fecha"
+     },
+     "valor": {
+      "type": "number",
+      "title": "Valor"
+     }
+    },
+    "type": "object",
+    "required": [
+     "fecha",
+     "valor"
+    ],
+    "title": "PuntoMonitoreo"
+   },
+   "Reporte": {
+    "properties": {
+     "formato": {
+      "type": "string",
+      "const": "flujo-efectivo/pronostico",
+      "title": "Formato"
+     },
+     "version": {
+      "type": "string",
+      "title": "Version"
+     },
+     "version_api": {
+      "type": "string",
+      "title": "Version Api"
+     },
+     "generado": {
+      "type": "string",
+      "title": "Generado"
+     },
+     "pronostico_calculado": {
+      "type": "string",
+      "title": "Pronostico Calculado"
+     },
+     "datos": {
+      "$ref": "#/components/schemas/InfoDatos"
+     },
+     "modelo": {
+      "type": "string",
+      "title": "Modelo"
+     },
+     "familia": {
+      "type": "string",
+      "title": "Familia"
+     },
+     "recomendado": {
+      "type": "boolean",
+      "title": "Recomendado"
+     },
+     "latencia_ms": {
+      "type": "number",
+      "title": "Latencia Ms"
+     },
+     "horizonte": {
+      "type": "integer",
+      "title": "Horizonte"
+     },
+     "cuantiles": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Cuantiles"
+     },
+     "unidades": {
+      "type": "string",
+      "title": "Unidades"
+     },
+     "umbral_deficit": {
+      "type": "number",
+      "title": "Umbral Deficit"
+     },
+     "niveles_alerta": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Niveles Alerta"
+     },
+     "confianza": {
+      "$ref": "#/components/schemas/ConfianzaModelo"
+     },
+     "series": {
+      "items": {
+       "$ref": "#/components/schemas/SerieReporte"
+      },
+      "type": "array",
+      "title": "Series"
+     }
+    },
+    "type": "object",
+    "required": [
+     "formato",
+     "version",
+     "version_api",
+     "generado",
+     "pronostico_calculado",
+     "datos",
+     "modelo",
+     "familia",
+     "recomendado",
+     "latencia_ms",
+     "horizonte",
+     "cuantiles",
+     "unidades",
+     "umbral_deficit",
+     "niveles_alerta",
+     "confianza",
+     "series"
+    ],
+    "title": "Reporte"
+   },
+   "ResumenConfianza": {
+    "properties": {
+     "disponible": {
+      "type": "boolean",
+      "title": "Disponible"
+     },
+     "estado_backtest": {
+      "type": "string",
+      "title": "Estado Backtest"
+     },
+     "nivel": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "alta",
+         "media",
+         "baja"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nivel"
+     },
+     "umbrales_cumplidos": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Umbrales Cumplidos"
+     },
+     "umbrales_total": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Umbrales Total"
+     },
+     "alarmas_monitoreo": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Alarmas Monitoreo"
+     },
+     "mae_serie": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mae Serie"
+     },
+     "rmae_serie": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rmae Serie"
+     },
+     "cobertura_serie": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cobertura Serie"
+     }
+    },
+    "type": "object",
+    "required": [
+     "disponible",
+     "estado_backtest"
+    ],
+    "title": "ResumenConfianza"
+   },
+   "Salud": {
+    "properties": {
+     "estado": {
+      "type": "string",
+      "enum": [
+       "ok",
+       "iniciando"
+      ],
+      "title": "Estado"
+     },
+     "version": {
+      "type": "string",
+      "title": "Version"
+     },
+     "datos": {
+      "$ref": "#/components/schemas/InfoDatos"
+     },
+     "modelos": {
+      "items": {
+       "$ref": "#/components/schemas/EstadoModelo"
+      },
+      "type": "array",
+      "title": "Modelos"
+     },
+     "modelo_recomendado": {
+      "type": "string",
+      "title": "Modelo Recomendado"
+     },
+     "serie_principal": {
+      "type": "string",
+      "title": "Serie Principal"
+     },
+     "horizonte_maximo": {
+      "type": "integer",
+      "title": "Horizonte Maximo"
+     },
+     "umbral_deficit": {
+      "type": "number",
+      "title": "Umbral Deficit"
+     },
+     "fechas_pronostico": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Fechas Pronostico"
+     },
+     "archivo_salida": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Archivo Salida",
+      "description": "Último reporte JSON escrito en el servidor"
+     }
+    },
+    "type": "object",
+    "required": [
+     "estado",
+     "version",
+     "datos",
+     "modelos",
+     "modelo_recomendado",
+     "serie_principal",
+     "horizonte_maximo",
+     "umbral_deficit",
+     "fechas_pronostico",
+     "archivo_salida"
+    ],
+    "title": "Salud"
+   },
+   "Serie": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "principal": {
+      "type": "boolean",
+      "title": "Principal"
+     },
+     "ultima_fecha": {
+      "type": "string",
+      "title": "Ultima Fecha"
+     },
+     "ultimo_valor": {
+      "type": "number",
+      "title": "Ultimo Valor"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "descripcion",
+     "principal",
+     "ultima_fecha",
+     "ultimo_valor"
+    ],
+    "title": "Serie"
+   },
+   "SerieReporte": {
+    "properties": {
+     "serie": {
+      "type": "string",
+      "title": "Serie"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "principal": {
+      "type": "boolean",
+      "title": "Principal"
+     },
+     "origen": {
+      "type": "string",
+      "title": "Origen"
+     },
+     "dias": {
+      "items": {
+       "$ref": "#/components/schemas/DiaPronostico"
+      },
+      "type": "array",
+      "title": "Dias"
+     },
+     "acumulado": {
+      "$ref": "#/components/schemas/Acumulado"
+     },
+     "alerta_deficit": {
+      "$ref": "#/components/schemas/AlertaDeficit"
+     },
+     "confianza": {
+      "$ref": "#/components/schemas/ResumenConfianza"
+     }
+    },
+    "type": "object",
+    "required": [
+     "serie",
+     "descripcion",
+     "principal",
+     "origen",
+     "dias",
+     "acumulado",
+     "alerta_deficit",
+     "confianza"
+    ],
+    "title": "SerieReporte"
+   },
+   "Umbral": {
+    "properties": {
+     "clave": {
+      "type": "string",
+      "title": "Clave"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "valor": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Valor"
+     },
+     "condicion": {
+      "type": "string",
+      "title": "Condicion"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "cumple": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cumple"
+     }
+    },
+    "type": "object",
+    "required": [
+     "clave",
+     "nombre",
+     "valor",
+     "condicion",
+     "unidad",
+     "cumple"
+    ],
+    "title": "Umbral"
+   },
+   "Validacion": {
+    "properties": {
+     "valido": {
+      "type": "boolean",
+      "title": "Valido"
+     },
+     "total_errores": {
+      "type": "integer",
+      "title": "Total Errores"
+     },
+     "errores": {
+      "items": {
+       "$ref": "#/components/schemas/ErrorValidacion"
+      },
+      "type": "array",
+      "title": "Errores",
+      "description": "Hasta 50 errores con su movimiento y campo"
+     },
+     "avisos": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Avisos"
+     },
+     "resumen": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Resumen",
+      "description": "Movimientos, periodo, días hábiles, bancos y campos opcionales presentes"
+     }
+    },
+    "type": "object",
+    "required": [
+     "valido",
+     "total_errores",
+     "errores",
+     "avisos",
+     "resumen"
+    ],
+    "title": "Validacion"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  }
+ }
+}

@@ -1,0 +1,5 @@
+modelo,dispositivo,repeticiones,carga (s),1.ª llamada en frío (ms),mediana (ms),p95 (ms),desv. est. (ms),ms por serie,series por segundo,mediana en backtest (ms)*,VRAM pico inferencia (MB)
+ETS,cpu,20,0.000,48.807,235.675,342.423,38.955,58.919,16.973,197.476,
+SARIMAX,cpu,13,0.000,99.365,2340.323,2550.482,160.316,585.081,1.709,105.202,
+SARIMAX + temporada,cpu,6,0.000,85.804,5402.424,5696.396,294.295,1350.606,0.740,124.456,
+Naive (referencia),cpu,20,0.000,8.472,8.624,9.279,0.412,2.156,463.829,8.915,
