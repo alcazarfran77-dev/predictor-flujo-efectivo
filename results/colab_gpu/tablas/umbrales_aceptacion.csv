@@ -1,0 +1,9 @@
+modelo,MAE (M MXN),rMAE,WQL,Cobertura P10-P90 (%),F1 dirección,Sesgo 4 semanas tras cambio de temporada (M MXN/día),MAE desde 01-09-2026 (M MXN),"Umbrales cumplidos (de 5, sin latencia)",Umbrales que no cumple
+Chronos-2,1.987143,0.652021,0.576170,81.431159,0.756219,0.638912,2.219896,4,['sesgo_cambio']
+Chronos-2 + temporada,1.992394,0.653744,0.577435,81.195652,0.753767,0.485214,2.223055,4,['sesgo_cambio']
+Chronos-2 (cross-learning),1.984673,0.651211,0.579546,81.050725,0.749068,0.656872,2.222766,4,['sesgo_cambio']
+Chronos-Bolt Small,2.012749,0.660423,0.595970,80.217391,0.746657,0.540816,2.244438,4,['sesgo_cambio']
+ETS,2.212891,0.726094,0.634220,84.166667,0.697060,0.382797,2.417844,4,['sesgo_cambio']
+SARIMAX,2.326202,0.763273,0.649011,82.663043,0.684012,0.293981,2.576681,5,[]
+SARIMAX + temporada,2.356752,0.773297,0.650103,81.757246,0.692077,-0.173892,2.566393,4,['wql']
+Naive (referencia),3.047666,1.000000,1.018305,93.152174,0.000000,-0.212107,3.731834,1,"['rmae', 'wql', 'cobertura', 'f1_direccion']"

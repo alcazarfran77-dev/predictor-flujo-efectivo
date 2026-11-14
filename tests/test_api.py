@@ -245,3 +245,37 @@ def test_no_arranca_con_un_json_invalido(tmp_path):
     with pytest.raises(DatosInvalidos):
         ServicioPronostico(ruta_datos=RAIZ / "data" / "DEPOSITOS_CARGADOS_FEBAN_sep2025_sep2026_anon.xlsx",
                            dir_salidas=tmp_path, precalentar=False).iniciar()
+
+
+def test_comparacion_estadistica_incluye_chronos_evaluado(cliente):
+    c = cliente.get("/api/v1/comparacion").json()
+    assert c["disponible"] and c["referencia"] == "ETS" and c["origenes"] == 276
+    assert c["fuente"] == "results/colab_gpu/tablas/backtest.csv.gz" and c["incluye_modelos_no_servidos"]
+    filas = {f["modelo"]: f for f in c["modelos"]}
+    assert set(filas) == {"Chronos-2", "Chronos-2 + temporada", "Chronos-2 (cross-learning)", "Chronos-Bolt Small",
+                          "SARIMAX", "SARIMAX + temporada"}
+    c2 = filas["Chronos-2"]
+    assert not c2["servido_por_la_api"] and c2["mejora_significativa"] and c2["veredicto"] == "Mejora significativa"
+    assert c2["mejora_mae_pct"] == pytest.approx(10.2, abs=0.05) and c2["ic95_mejora_pct"][0] > 5
+    assert c2["umbrales_cumplidos"] == 4 and c2["umbrales_evaluados"] == 5        # falla el sesgo tras el cambio
+    assert any("Sesgo" in u for u in c2["umbrales_fallidos"]) and any("Latencia" in u for u in c2["umbrales_sin_evaluar"])
+    assert not c2["reemplaza_al_recomendado"]
+    assert filas["SARIMAX"]["servido_por_la_api"] and filas["SARIMAX"]["veredicto"] == "Peor, significativo"
+    assert not any(f["reemplaza_al_recomendado"] for f in c["modelos"])
+    assert "todavía no lo reemplaza" in c["conclusion"] and "ETS sigue como modelo recomendado" in c["conclusion"]
+
+
+def test_comparacion_sin_backtest_extendido_cubre_los_modelos_de_la_api(servicio, tmp_path):
+    import shutil
+    from api.servicio import ServicioPronostico
+    from api._rutas import RAIZ
+    resultados = tmp_path / "results"
+    (resultados / "tablas").mkdir(parents=True)
+    shutil.copy(RAIZ / "results" / "corrida.json", resultados / "corrida.json")
+    shutil.copy(RAIZ / "results" / "tablas" / "backtest.csv.gz", resultados / "tablas" / "backtest.csv.gz")
+    s = ServicioPronostico(dir_resultados=resultados, dir_cache=tmp_path / "cache", calcular_faltantes=False,
+                           precalentar=False, dir_salidas=tmp_path / "salidas", escribir_salida=False).iniciar()
+    c = s.comparacion_estadistica()
+    assert c["disponible"] and c["fuente"] == "Backtest de la API" and not c["incluye_modelos_no_servidos"]
+    assert {f["modelo"] for f in c["modelos"]} == {"SARIMAX", "SARIMAX + temporada"}
+    assert "Ningún modelo mejora a ETS" in c["conclusion"]

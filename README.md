@@ -1,17 +1,19 @@
 # Predictor de flujo de efectivo con modelos de Hugging Face
 
-[![Dashboard publicado](https://img.shields.io/badge/dashboard-GitHub%20Pages-2a78d6)](https://<usuario>.github.io/predictor-flujo-efectivo/)
-[![Pruebas](https://github.com/<usuario>/predictor-flujo-efectivo/actions/workflows/pruebas.yml/badge.svg)](https://github.com/<usuario>/predictor-flujo-efectivo/actions/workflows/pruebas.yml)
-[![Docker](https://github.com/<usuario>/predictor-flujo-efectivo/actions/workflows/docker.yml/badge.svg)](https://github.com/<usuario>/predictor-flujo-efectivo/actions/workflows/docker.yml)
-[![Cuaderno de modelos en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/<usuario>/predictor-flujo-efectivo/blob/main/notebooks/predictor_flujo_efectivo_chronos.ipynb)
+[![Dashboard publicado](https://img.shields.io/badge/dashboard-GitHub%20Pages-2a78d6)](https://alcazarfran77-dev.github.io/predictor-flujo-efectivo/)
+[![Pruebas](https://github.com/alcazarfran77-dev/predictor-flujo-efectivo/actions/workflows/pruebas.yml/badge.svg)](https://github.com/alcazarfran77-dev/predictor-flujo-efectivo/actions/workflows/pruebas.yml)
+[![Docker](https://github.com/alcazarfran77-dev/predictor-flujo-efectivo/actions/workflows/docker.yml/badge.svg)](https://github.com/alcazarfran77-dev/predictor-flujo-efectivo/actions/workflows/docker.yml)
+[![Cuaderno de modelos en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alcazarfran77-dev/predictor-flujo-efectivo/blob/main/notebooks/predictor_flujo_efectivo_chronos.ipynb)
 
-En este proyecto construí un predictor del flujo de efectivo diario a partir de los movimientos bancarios que exporta SAP en la transacción FEBAN. Comparo dos modelos fundacionales de series de tiempo publicados en Hugging Face, Chronos-2 y Chronos-Bolt Small, contra dos modelos estadísticos clásicos, ETS y SARIMAX, y contra un pronóstico ingenuo que repite el último día observado. El pronóstico se consume a través de un backend con una API REST, que lee los movimientos de un archivo JSON validado y entrega P10, P50 y P90 por día, la alerta de déficit y las métricas de confianza, tanto en un dashboard web como en un archivo JSON.
+En este proyecto construí un predictor del flujo de efectivo diario a partir de los movimientos bancarios que exporta SAP en la transacción FEBAN. Comparo dos modelos fundacionales de series de tiempo publicados en Hugging Face, Chronos-2 y Chronos-Bolt Small, contra dos modelos estadísticos clásicos, ETS y SARIMAX, y contra un pronóstico ingenuo que repite el último día observado. El pronóstico se consume a través de un backend con una API REST, que recibe los movimientos reales de la empresa en un archivo JSON, los valida y entrega P10, P50 y P90 por día, la alerta de déficit y las métricas de confianza, tanto en un dashboard web como en un archivo JSON.
 
 ## Descripción del proyecto
 
-Tesorería necesita saber cuánto efectivo va a entrar y salir en los próximos días para decidir traspasos entre bancos, inversiones de excedentes y pagos. El punto de partida es un export FEBAN con los movimientos de una cuenta en BBVA y otra en HSBC, del 01-09-2025 al 30-09-2026. Solo una semana es real; el resto lo completé con datos ficticios coherentes con esa semana, con más ingreso de enero a marzo y más gasto de septiembre a diciembre. En [`data/README.md`](data/README.md) explico cómo se armó el archivo y cómo lo anonimicé.
+Tesorería necesita saber cuánto efectivo va a entrar y salir en los próximos días para decidir traspasos entre bancos, inversiones de excedentes y pagos. El sistema trabaja con los movimientos reales que exporta FEBAN: cada export se convierte a JSON con `src/excel_a_json.py`, la API revisa que traiga todo lo necesario y, si es así, pronostica sobre esa historia. Con un archivo nuevo, la API recalcula el backtest de cada modelo con esos mismos movimientos, de modo que la alerta de déficit y las métricas de confianza que entrega corresponden a los datos que está pronosticando.
 
-Antes de pronosticar, el pipeline elimina las partidas repetidas por cargas múltiples del mismo extracto y separa los movimientos de tesorería (barridos, inversiones en fondos y traspasos entre bancos propios), porque no son flujo del negocio. Con lo que queda arma cuatro series en días hábiles: `OPERATIVO_TOTAL`, que es la serie principal, `OPERATIVO_BBVA`, `OPERATIVO_HSBC` y `NETO_TOTAL`, que incluye la tesorería.
+Para probar el sistema y reproducir el experimento, el repositorio trae un archivo de ejemplo: un export FEBAN anonimizado con los movimientos de una cuenta en BBVA y otra en HSBC, del 01-09-2025 al 30-09-2026. Cuando armé el ejemplo solo tenía una semana de movimientos reales, así que completé el resto con datos ficticios coherentes con esa semana, con más ingreso de enero a marzo y más gasto de septiembre a diciembre. Las cifras de este README, de `results/`, de `salidas/` y del dashboard publicado salen de ese ejemplo; con la historia real de la empresa, la misma API da las propias. En [`data/README.md`](data/README.md) explico cómo se armó el archivo de ejemplo y cómo lo anonimicé.
+
+Antes de pronosticar, el pipeline elimina las partidas repetidas por cargas múltiples del mismo extracto y separa los movimientos de tesorería (barridos, inversiones en fondos y traspasos entre bancos propios), porque no son flujo del negocio. Las reglas que hacen esa separación están en `src/flujo_efectivo/config.py` y, con los datos reales, conviene revisarlas contra la lista de cuentas propias de la empresa. Con lo que queda arma las series en días hábiles: `OPERATIVO_TOTAL`, que es la serie principal, una serie operativa por banco (`OPERATIVO_BBVA` y `OPERATIVO_HSBC` en el ejemplo) y `NETO_TOTAL`, que incluye la tesorería.
 
 | Modelo | Tipo | Fuente | Tamaño | Licencia |
 |---|---|---|---|---|
@@ -26,7 +28,7 @@ Antes de pronosticar, el pipeline elimina las partidas repetidas por cargas múl
 
 La covariable de temporada son dos indicadores que se conocen de antemano: ingreso alto de enero a marzo y gasto alto de septiembre a diciembre. Comparar cada modelo con y sin ella muestra si anticipa el cambio de temporada o lo detecta tarde. Solo la uso en un origen cuando la historia ya contiene al menos 10 días hábiles de cada temporada que aparece en el horizonte, para que el modelo no extrapole a una temporada que nunca ha visto.
 
-La evaluación es un backtest *walk-forward*: en cada uno de 276 orígenes, cada modelo usa solo la historia hasta ese día y pronostica los siguientes 5 días hábiles, lo que da 5,520 pronósticos por modelo. Mido el error con MAE, sesgo, RMSE, sMAPE, el MAE relativo al ingenuo (rMAE) y, para los cuantiles P10, P50 y P90, la pérdida de cuantiles ponderada (WQL) y la cobertura del intervalo. Como el ejercicio pedía accuracy, precision, recall y F1, convierto cada pronóstico en la decisión que tomaría tesorería en tres eventos: si el flujo sube respecto al último día, si será un día de flujo alto y si habrá déficit. También mido la latencia por llamada, la carga del modelo, la memoria de GPU y cómo crece el tiempo con 1, 16 y 64 series, y separo las métricas antes y desde el 01-09-2026, cuando empieza la temporada de mayor gasto.
+La evaluación es un backtest *walk-forward*: en cada origen, cada modelo usa solo la historia hasta ese día y pronostica los siguientes 5 días hábiles. Con el archivo de ejemplo son 276 orígenes y 5,520 pronósticos por modelo. Mido el error con MAE, sesgo, RMSE, sMAPE, el MAE relativo al ingenuo (rMAE) y, para los cuantiles P10, P50 y P90, la pérdida de cuantiles ponderada (WQL) y la cobertura del intervalo. Como el ejercicio pedía accuracy, precision, recall y F1, convierto cada pronóstico en la decisión que tomaría tesorería en tres eventos: si el flujo sube respecto al último día, si será un día de flujo alto y si habrá déficit. También mido la latencia por llamada, la carga del modelo, la memoria de GPU y cómo crece el tiempo con 1, 16 y 64 series, y separo las métricas antes y desde el 01-09-2026, cuando empieza la temporada de mayor gasto.
 
 ## Estructura del repositorio
 
@@ -65,6 +67,7 @@ predictor-flujo-efectivo/
 ├── salidas/                          reportes JSON que escribe la API
 ├── src/
 │   ├── ejecutar_backtest.py          corre todo y guarda results/
+│   ├── comparar_modelos.py           ¿algún modelo mejora a ETS de forma significativa?
 │   ├── excel_a_json.py               convierte un export FEBAN en Excel al JSON de la API
 │   └── flujo_efectivo/
 │       ├── config.py                 parámetros (celda 4.1 del cuaderno)
@@ -120,16 +123,16 @@ Con la configuración por omisión, la parte estadística tarda unos 7 minutos e
 
 ### En Google Colab
 
-1. Abre el cuaderno con el botón "Open in Colab" del inicio de esta página, o en `https://colab.research.google.com/github/<usuario>/predictor-flujo-efectivo/blob/main/notebooks/predictor_flujo_efectivo_chronos.ipynb`.
+1. Abre el cuaderno con el botón "Open in Colab" del inicio de esta página, o en `https://colab.research.google.com/github/alcazarfran77-dev/predictor-flujo-efectivo/blob/main/notebooks/predictor_flujo_efectivo_chronos.ipynb`.
 2. En *Entorno de ejecución → Cambiar tipo de entorno de ejecución* elige GPU T4.
 3. Si tienes token de Hugging Face, guárdalo en Secrets como `HF_TOKEN` y dale acceso al cuaderno.
-4. Para los datos, agrega una celda al inicio con `!git clone https://github.com/<usuario>/predictor-flujo-efectivo.git`; el cuaderno busca el Excel en `predictor-flujo-efectivo/data/`. Si no lo clonas, al llegar a la celda 4.2 te pide subir el archivo.
+4. Para los datos, agrega una celda al inicio con `!git clone https://github.com/alcazarfran77-dev/predictor-flujo-efectivo.git`; el cuaderno busca el Excel en `predictor-flujo-efectivo/data/`. Si no lo clonas, al llegar a la celda 4.2 te pide subir el archivo.
 5. Ejecuta *Entorno de ejecución → Ejecutar todas*. Al terminar se descarga `resultados_predictor_flujo.xlsx` con todas las tablas.
 
 ### En local con Jupyter
 
 ```bash
-git clone https://github.com/<usuario>/predictor-flujo-efectivo.git
+git clone https://github.com/alcazarfran77-dev/predictor-flujo-efectivo.git
 cd predictor-flujo-efectivo
 python -m venv .venv
 source .venv/bin/activate          # en Windows: .venv\Scripts\activate
@@ -193,6 +196,7 @@ Al arrancar, el servicio lee el JSON de movimientos y lo valida; si falta algún
 | GET | `/api/v1/alertas?modelo=` | Alerta de déficit de todas las series |
 | GET | `/api/v1/metricas?modelo=&serie=` | Métricas del backtest, umbrales del reporte, monitoreo y desempeño de la alerta |
 | GET | `/api/v1/modelos` | Modelos lado a lado con los criterios de aceptación y de cambio de modelo |
+| GET | `/api/v1/comparacion` | Comparación estadística de cada modelo contra el recomendado, incluidos Chronos-2 y Chronos-Bolt evaluados en GPU |
 | GET | `/api/v1/reporte?modelo=&descargar=` | El pronóstico completo de un modelo (todas las series, alertas y confianza) en un solo JSON; con `descargar=true` llega como archivo |
 | POST | `/api/v1/reporte?modelo=` | Escribe ese reporte como archivo en `salidas/` y devuelve su ruta |
 | GET | `/api/v1/datos/validacion` | Resultado de la validación del JSON cargado: avisos y resumen |
@@ -215,7 +219,7 @@ Si la serie o el modelo no existen, la API responde 404 con la lista de opciones
 
 ### Entrada en JSON
 
-La API ya no lee Excel: su entrada es `data/movimientos_feban_sep2025_sep2026_anon.json`, con los mismos 4,804 movimientos del Excel. Cada movimiento necesita fecha, monto, banco y concepto; partida, tipo de transacción, clave del extracto, regla contable y moneda son opcionales. La validación revisa los cuatro datos obligatorios y su tipo, que la historia cubra al menos 10 días hábiles y que haya flujo operativo, y avisa de duplicados, huecos sin movimientos, otras monedas y campos opcionales que faltan. Junta todos los problemas en una sola pasada:
+La API ya no lee Excel: recibe los movimientos en JSON. Por omisión carga el ejemplo `data/movimientos_feban_sep2025_sep2026_anon.json`, con los mismos 4,804 movimientos del Excel; para trabajar con los movimientos reales se le indica otro archivo con la variable `FLUJO_DATOS` (o con `--datos` en `python -m api.exportar` y `python -m api.publicar`). Cada movimiento necesita fecha, monto, banco y concepto; partida, tipo de transacción, clave del extracto, regla contable y moneda son opcionales. La validación revisa los cuatro datos obligatorios y su tipo, que la historia cubra al menos 10 días hábiles y que haya flujo operativo, y avisa de duplicados, huecos sin movimientos, otras monedas y campos opcionales que faltan. Junta todos los problemas en una sola pasada:
 
 ```json
 {"valido": false, "total_errores": 3, "errores": [
@@ -248,7 +252,7 @@ Cada pronóstico trae el MAE, el rMAE y la cobertura histórica de su mismo hori
 
 ### Cómo levantarlo
 
-En Colab, sin instalar nada en la computadora: abre [`notebooks/api_dashboard_colab.ipynb`](https://colab.research.google.com/github/<usuario>/predictor-flujo-efectivo/blob/main/notebooks/api_dashboard_colab.ipynb) y ejecuta todas las celdas. El cuaderno clona el repositorio (o pide el zip), instala `requirements-api.txt`, arranca la API, la consulta desde Python y muestra el dashboard dentro de Colab, además de un enlace para abrirlo en otra pestaña.
+En Colab, sin instalar nada en la computadora: abre [`notebooks/api_dashboard_colab.ipynb`](https://colab.research.google.com/github/alcazarfran77-dev/predictor-flujo-efectivo/blob/main/notebooks/api_dashboard_colab.ipynb) y ejecuta todas las celdas. El cuaderno clona el repositorio (o pide el zip), instala `requirements-api.txt`, arranca la API, la consulta desde Python y muestra el dashboard dentro de Colab, además de un enlace para abrirlo en otra pestaña.
 
 En local:
 
@@ -361,7 +365,7 @@ La página muestra los datos con los que se generó y la fecha de publicación. 
 
 ## Resultados
 
-Los resultados de [`results/`](results/) salen del script en CPU. Los de Chronos-2 y Chronos-Bolt Small están pendientes: en el entorno donde armé el repositorio no pude descargar los pesos, así que solo validé su código con modelos diminutos de pesos aleatorios. Para completarlos hay que correr el cuaderno en Colab o el script en una máquina con acceso a Hugging Face.
+Los resultados de ETS, SARIMAX y el ingenuo salen del script en CPU y están en [`results/`](results/). Los de Chronos-2 y Chronos-Bolt Small salen del cuaderno corrido en Google Colab con GPU y están en [`results/colab_gpu/`](results/colab_gpu/). Las dos corridas usan los mismos datos, orígenes y horizontes: los valores reales y los pronósticos de ETS son idénticos en ambas.
 
 | Modelo | MAE (M MXN) | rMAE | MAE desde 01-09-2026 (M MXN) | WQL | Cobertura P10–P90 | F1 dirección | Latencia mediana |
 |---|---|---|---|---|---|---|---|
@@ -369,10 +373,36 @@ Los resultados de [`results/`](results/) salen del script en CPU. Los de Chronos
 | SARIMAX | 2.33 | 0.76 | 2.58 | 0.650 | 83 % | 0.68 | 2.34 s |
 | SARIMAX + temporada | 2.36 | 0.77 | 2.57 | 0.650 | 82 % | 0.69 | 5.40 s |
 | Ingenuo (referencia) | 3.05 | 1.00 | 3.73 | 1.018 | 93 % | 0.00 | 0.01 s |
-| Chronos-2 (tres variantes) | pendiente | | | | | | |
-| Chronos-Bolt Small | pendiente | | | | | | |
+| Chronos-2 | 1.99 | 0.65 | 2.22 | 0.576 | 81 % | 0.76 | no medida |
+| Chronos-2 + temporada | 1.99 | 0.65 | 2.22 | 0.577 | 81 % | 0.75 | no medida |
+| Chronos-2 (cross-learning) | 1.98 | 0.65 | 2.22 | 0.580 | 81 % | 0.75 | no medida |
+| Chronos-Bolt Small | 2.01 | 0.66 | 2.24 | 0.596 | 80 % | 0.75 | no medida |
 
-El MAE se mide sobre las cuatro series y los cinco pasos del horizonte. La latencia es por llamada, pronosticando las cuatro series con toda la historia.
+El MAE se mide sobre las cuatro series y los cinco pasos del horizonte. La latencia es por llamada, pronosticando las cuatro series con toda la historia. La de Chronos no se guardó en la corrida de Colab.
+
+### ¿Chronos mejora a ETS de forma significativa?
+
+Una diferencia de MAE en la tabla puede ser ruido, así que cada modelo se compara con ETS sobre los mismos orígenes, series y horizontes. Uso la prueba de Diebold-Mariano con varianza HAC, un intervalo de confianza por bootstrap de bloques y el ajuste de Holm. Un modelo mejora de forma significativa si baja el MAE al menos 5 %, con p ajustada menor a 0.05 y un intervalo que no incluye el cero. Es la misma regla con la que la API reemplaza al modelo recomendado.
+
+```bash
+python src/comparar_modelos.py        # lee results/tablas/backtest.csv.gz
+```
+
+El script de backtest y la sección 8.6 del cuaderno hacen esta comparación al final de cada corrida. Con el backtest de Colab, que incluye los ocho modelos:
+
+| Modelo | MAE (M MXN) | Diferencia de MAE frente a ETS | IC 95 % | p ajustada | Veredicto MAE | Diferencia de WQL | Veredicto WQL |
+| --- | ---: | ---: | --- | ---: | --- | ---: | --- |
+| Chronos-2 (cross-learning) | 1.98 | 10.3 % menos | 8.6 a 12.7 % menos | < 0.001 | Mejora significativa | 8.6 % menos | Mejora significativa |
+| Chronos-2 | 1.99 | 10.2 % menos | 8.4 a 12.7 % menos | < 0.001 | Mejora significativa | 9.2 % menos | Mejora significativa |
+| Chronos-2 + temporada | 1.99 | 10.0 % menos | 8.2 a 12.5 % menos | < 0.001 | Mejora significativa | 9.0 % menos | Mejora significativa |
+| Chronos-Bolt Small | 2.01 | 9.0 % menos | 6.9 a 12.2 % menos | < 0.001 | Mejora significativa | 6.0 % menos | Mejora significativa |
+| SARIMAX | 2.33 | 5.1 % más | 2.4 a 8.2 % más | 0.002 | Peor, significativo | 2.3 % más | Sin diferencia significativa |
+| SARIMAX + temporada | 2.36 | 6.5 % más | 3.4 a 10.0 % más | 0.001 | Peor, significativo | 2.5 % más | Sin diferencia significativa |
+| Ingenuo | 3.05 | 37.7 % más | 31.9 a 43.6 % más | < 0.001 | Peor, significativo | 60.6 % más | Peor, significativo |
+
+Los cuatro modelos Chronos mejoran a ETS de forma significativa, y las tres variantes de Chronos-2 son equivalentes entre sí. Chronos-2 gana en 92 % de los orígenes y mejora en las cuatro series: 17 % en NETO_TOTAL y entre 5 y 7 % en las tres operativas. Desde el 01-09-2026 la mejora es de 8.8 %.
+
+Aun así, Chronos-2 no reemplaza todavía a ETS. Cumple rMAE, WQL, cobertura y F1 de dirección, pero no el sesgo en las cuatro semanas posteriores al cambio de temporada: sobreestima 0.64 M MXN por día (0.49 con la covariable), frente a 0.38 de ETS y un límite de ±0.3. Además falta medir su latencia, y la API y la imagen Docker solo pronostican con los modelos estadísticos. La API entrega esta comparación en `GET /api/v1/comparacion` y el dashboard la muestra al final, con Chronos marcado como "Solo evaluado". El detalle está en [`results/colab_gpu/comparacion_vs_ets.md`](results/colab_gpu/comparacion_vs_ets.md).
 
 ![MAE mensual por modelo](results/figuras/04_mae_mensual.png)
 
@@ -386,15 +416,17 @@ Sin la covariable, SARIMAX subestimó el flujo de enero a marzo y lo sobreestim�
 
 Este ejercicio me permitió construir de principio a fin un predictor de flujo de efectivo a partir de movimientos bancarios y comparar dos modelos fundacionales de Hugging Face, Chronos-2 y Chronos-Bolt Small, contra ETS y SARIMAX. Lo primero que aprendí es que la preparación de los datos pesa tanto como el modelo. El export FEBAN repetía cada partida tantas veces como cargas tenía el extracto, lo que inflaba el flujo entre 6 y 19 veces. Además, tuve que separar los barridos, las inversiones en fondos y los traspasos entre bancos, porque son decisiones de tesorería y no flujo del negocio.
 
-De los modelos que pude medir, ETS fue el mejor. Tuvo un error medio de 2.21 M MXN por pronóstico, 27 % menos que el pronóstico ingenuo, el mejor intervalo y menos de medio segundo por corrida en CPU. SARIMAX, con y sin covariable, tardó entre 10 y 23 veces más y tuvo más error. Me sorprendió que la diferencia de precisión entre modelos fuera de apenas 7 %, frente a una diferencia de costo tan grande. Con un ruido diario cercano a 3 M MXN y casi sin memoria de un día a otro, lo más que puede hacer un modelo es estimar bien el nivel del flujo, y en ese terreno uno sencillo compite muy bien.
+Entre los modelos estadísticos, ETS fue el mejor. Tuvo un error medio de 2.21 M MXN por pronóstico, 27 % menos que el pronóstico ingenuo, y menos de medio segundo por corrida en CPU. SARIMAX, con y sin covariable, tardó entre 10 y 23 veces más y tuvo más error. Chronos-2 bajó el error a 1.99 M MXN, 10 % menos que ETS, y la diferencia es estadísticamente significativa: gana en 92 % de los orígenes del backtest. Chronos-Bolt Small quedó cerca, con 9 % menos error que ETS. Con un ruido diario cercano a 3 M MXN y casi sin memoria de un día a otro, lo más que puede hacer un modelo es estimar bien el nivel del flujo, y en ese terreno uno sencillo compite muy bien.
 
 La covariable de temporada no mejoró el error promedio de SARIMAX, pero sí corrigió su sesgo al entrar a la temporada de mayor gasto: en septiembre pasó de sobreestimar 0.24 M MXN diarios a subestimar 0.22. También vi que una covariable mal planteada empeora el modelo. En la primera versión, SARIMAX extrapoló en abril y su error de ese mes subió de 2.24 a 3.26 M MXN, por lo que limité su uso a temporadas que ya aparecen en la historia.
 
-El trabajo tiene dos limitaciones. La mayor parte de la historia es simulada, porque solo contaba con seis días hábiles de datos reales, y los modelos Chronos todavía no se evalúan con sus pesos publicados en GPU. Por eso recomiendo ETS para producción y dejo a Chronos-2 con covariable de temporada como alternativa, que solo lo sustituiría si reduce el error al menos 5 % y cumple los umbrales que definí. Como siguiente paso quiero repetir el pipeline con un año de movimientos reales y agregar como covariables los flujos que tesorería conoce de antemano, para ver si Chronos-2 los aprovecha mejor que los métodos clásicos.
+El trabajo tiene dos limitaciones. La mayor parte de la historia es simulada, porque solo contaba con seis días hábiles de datos reales, y de Chronos no medí la latencia. Por eso mantengo ETS en producción, aunque Chronos-2 ya redujo el error más del 5 % que pedía: todavía no cumple el umbral de sesgo tras un cambio de temporada, donde sobreestima más que ETS, y servirlo exige GPU o una imagen bastante más pesada. Queda como candidato a reemplazarlo. Como siguiente paso quiero repetir el pipeline con un año de movimientos reales y agregar como covariables los flujos que tesorería conoce de antemano, para ver si Chronos-2 los aprovecha mejor que los métodos clásicos.
 
 ## Confidencialidad de los datos
 
-El Excel y el JSON del repositorio están anonimizados: los nombres de clientes y proveedores, las cuentas CLABE y los números de cuenta y contrato que traían los conceptos bancarios se cambiaron por valores ficticios, sin tocar importes, fechas ni las palabras que usa la clasificación. Los exports originales no se suben; el `.gitignore` excluye cualquier export FEBAN, en Excel o en JSON, que no termine en `_anon`.
+El Excel y el JSON de ejemplo del repositorio están anonimizados: los nombres de clientes y proveedores, las cuentas CLABE y los números de cuenta y contrato que traían los conceptos bancarios se cambiaron por valores ficticios, sin tocar importes, fechas ni las palabras que usa la clasificación. Los exports originales no se suben; el `.gitignore` excluye cualquier export FEBAN, en Excel o en JSON, que no termine en `_anon`.
+
+Los movimientos reales que procese la API se quedan donde corre el servidor: conviene guardarlos en una carpeta fuera del repositorio e indicarlos con `FLUJO_DATOS`. Lo mismo aplica al reporte que la API escribe en `salidas/` con esos datos y a la carpeta `docs/` si se genera con ellos, porque la página de GitHub Pages es pública.
 
 ## Referencias
 

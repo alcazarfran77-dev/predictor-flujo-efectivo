@@ -7,7 +7,7 @@ GitHub Pages solo sirve archivos, así que aquí se levanta la API en memoria, s
 el dashboard (todas las series y todos los modelos) y cada una se guarda como archivo JSON en
 docs/api/v1/. El dashboard detecta que es la versión publicada (meta flujo-modo=estatico) y lee esos archivos
 en lugar de llamar al servidor. Los mismos archivos quedan disponibles para cualquiera en la página, por ejemplo
-https://<usuario>.github.io/predictor-flujo-efectivo/api/v1/pronostico/OPERATIVO_TOTAL/ETS.json
+https://alcazarfran77-dev.github.io/predictor-flujo-efectivo/api/v1/pronostico/OPERATIVO_TOTAL/ETS.json
 """
 import argparse
 import json
@@ -92,6 +92,7 @@ def publicar(destino, ruta_datos=None, avance=print):
                 archivos = [_escribir(destino, "salud.json", salud),
                             _escribir(destino, "series.json", pedir("/api/v1/series")),
                             _escribir(destino, "modelos.json", pedir("/api/v1/modelos")),
+                            _escribir(destino, "comparacion.json", pedir("/api/v1/comparacion")),
                             _escribir(destino, "datos/validacion.json", pedir("/api/v1/datos/validacion"))]
                 for serie in servicio.datos.ids:
                     archivos.append(_escribir(destino, f"series/{serie}/historia.json",

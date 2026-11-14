@@ -1,0 +1,14 @@
+# Fin de línea uniforme (LF) para que los archivos no cambien al editarse en Windows
+* text=auto eol=lf
+
+# Binarios: git no intenta compararlos ni convertir fines de línea
+*.png binary
+*.xlsx binary
+*.woff2 binary
+*.gz binary
+*.zip binary
+
+# Archivos generados: GitHub los colapsa en las revisiones de cambios
+docs/** linguist-generated=true
+results/tablas/** linguist-generated=true
+salidas/*.json linguist-generated=true

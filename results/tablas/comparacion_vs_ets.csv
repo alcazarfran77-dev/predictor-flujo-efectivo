@@ -1,0 +1,4 @@
+modelo,MAE (M MXN),MAE referencia (M MXN),Mejora MAE (%),IC95 inferior (%),IC95 superior (%),DM,p,p ajustada (Holm),Veredicto MAE,WQL,Mejora WQL (%),IC95 WQL inferior (%),IC95 WQL superior (%),p WQL,p WQL ajustada (Holm),Veredicto WQL,Orígenes en que gana (%),Orígenes
+SARIMAX,2.328541,2.212891,-5.226218,-8.344897,-2.456660,3.154389,0.001787,0.001787,"Peor, significativo",0.649516,-2.411740,-4.602027,-0.321596,0.052687,0.105374,Sin diferencia significativa,29.347826,276.000000
+SARIMAX + temporada,2.357467,2.212891,-6.533381,-10.062764,-3.381665,3.517142,0.000510,0.001020,"Peor, significativo",0.650282,-2.532552,-5.305172,-0.169919,0.086367,0.105374,Sin diferencia significativa,27.898551,276.000000
+Naive (referencia),3.047666,2.212891,-37.723277,-43.607329,-31.866257,10.552155,0.000000,0.000000,"Peor, significativo",1.018305,-60.560197,-65.871298,-55.798559,0.000000,0.000000,"Peor, significativo",34.057971,276.000000

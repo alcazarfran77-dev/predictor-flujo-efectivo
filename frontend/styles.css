@@ -416,3 +416,11 @@ main[data-estado="recargando"] .bloque { opacity: 0.5; transition: opacity 120ms
   text-underline-offset: 3px;
   font-weight: 600;
 }
+
+/* Comparación estadística contra el modelo recomendado */
+.veredicto { white-space: nowrap; }
+.veredicto--bien { color: var(--exito-texto); font-weight: 600; }
+.veredicto--bien::before { content: "▲ "; font-size: 0.75em; }
+.veredicto--mal { color: var(--critico-texto); font-weight: 600; }
+.veredicto--mal::before { content: "▼ "; font-size: 0.75em; }
+.veredicto--neutro { color: var(--tinta-2); }

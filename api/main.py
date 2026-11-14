@@ -166,6 +166,12 @@ def modelos(request: Request):
     return servicio(request).comparacion()
 
 
+@api.get("/comparacion", response_model=E.ComparacionEstadistica,
+         summary="¿Algún modelo mejora de forma significativa al recomendado? Incluye Chronos si se evaluó")
+def comparacion(request: Request):
+    return servicio(request).comparacion_estadistica()
+
+
 @api.get("/reporte", response_model=E.Reporte, response_model_exclude_unset=True,
          summary="Pronóstico completo de un modelo (todas las series, alertas y confianza) en un solo JSON")
 def reporte(request: Request, modelo: Optional[str] = None,

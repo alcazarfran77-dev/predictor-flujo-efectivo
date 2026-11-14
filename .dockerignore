@@ -1,0 +1,23 @@
+# Lo que no necesita la imagen: control de versiones, cuadernos, la página generada y salidas pesadas
+.git
+.github
+.gitignore
+.gitattributes
+.dockerignore
+Dockerfile
+compose.yaml
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ipynb_checkpoints
+.venv
+venv
+api_cache
+api.log
+notebooks
+docs
+salidas/*.json
+results/figuras
+results/capturas
+results/resultados_predictor_flujo.xlsx
+*.zip

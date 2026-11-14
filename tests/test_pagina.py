@@ -32,6 +32,7 @@ def test_archivos_generados(sitio):
             assert (sitio / "api" / "v1" / "pronostico" / serie / f"{slug(m)}.json").exists()
             assert (sitio / "api" / "v1" / "metricas" / serie / f"{slug(m)}.json").exists()
     assert json.loads((sitio / "api" / "openapi.json").read_text(encoding="utf-8"))["info"]["version"]
+    assert leer(sitio, "comparacion.json")["disponible"]
     salud = leer(sitio, "salud.json")
     assert salud["modo"] == "estatico" and salud["publicado"] and salud["archivo_salida"] is None
     assert sum(1 for p in sitio.rglob("*") if p.is_file()) < 100          # cabe en una sola carga web de GitHub
@@ -87,6 +88,11 @@ def test_dashboard_publicado_funciona_sin_servidor(sitio):
         pagina.wait_for_selector("#tabla-modelos tbody tr")
 
         assert pagina.text_content("#conexion-texto") == "Versión publicada, sin servidor"
+        pagina.wait_for_selector("#tabla-comparacion tbody tr")
+        comparacion = leer(sitio, "comparacion.json")
+        assert pagina.locator("#tabla-comparacion tbody tr").count() == len(comparacion["modelos"])
+        assert "Chronos-2" in pagina.text_content("#tabla-comparacion") and "Solo evaluado" in pagina.text_content("#tabla-comparacion")
+        assert comparacion["conclusion"] in pagina.text_content("#comparacion-conclusion")
         assert not pagina.is_visible("#guardar-json")
         assert pagina.get_attribute("#enlace-repo", "href") == "https://github.com/usuario-ejemplo/predictor-flujo-efectivo"
         p50 = leer(sitio, "pronostico/OPERATIVO_TOTAL/ETS.json")["dias"][0]["p50"]

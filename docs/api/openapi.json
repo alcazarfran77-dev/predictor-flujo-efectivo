@@ -3,7 +3,7 @@
  "info": {
   "title": "API del predictor de flujo de efectivo",
   "description": "Pronóstico diario de flujo de efectivo con cuantiles P10, P50 y P90, alerta de déficit y métricas de confianza del backtest walk-forward. Montos en pesos mexicanos (MXN).",
-  "version": "1.1.0"
+  "version": "1.2.0"
  },
  "paths": {
   "/api/v1/salud": {
@@ -332,6 +332,24 @@
          },
          "type": "array",
          "title": "Response Modelos Api V1 Modelos Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/comparacion": {
+   "get": {
+    "summary": "¿Algún modelo mejora de forma significativa al recomendado? Incluye Chronos si se evaluó",
+    "operationId": "comparacion_api_v1_comparacion_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ComparacionEstadistica"
         }
        }
       }
@@ -738,6 +756,121 @@
      "series"
     ],
     "title": "ArchivoGenerado"
+   },
+   "ComparacionEstadistica": {
+    "properties": {
+     "disponible": {
+      "type": "boolean",
+      "title": "Disponible"
+     },
+     "referencia": {
+      "type": "string",
+      "title": "Referencia"
+     },
+     "mae_referencia": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mae Referencia"
+     },
+     "origenes": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origenes"
+     },
+     "mejora_minima_pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mejora Minima Pct"
+     },
+     "alfa": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Alfa"
+     },
+     "metodo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Metodo"
+     },
+     "fuente": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fuente"
+     },
+     "incluye_modelos_no_servidos": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Incluye Modelos No Servidos"
+     },
+     "modelos": {
+      "items": {
+       "$ref": "#/components/schemas/ModeloComparado"
+      },
+      "type": "array",
+      "title": "Modelos"
+     },
+     "conclusion": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Conclusion"
+     }
+    },
+    "type": "object",
+    "required": [
+     "disponible",
+     "referencia",
+     "modelos"
+    ],
+    "title": "ComparacionEstadistica",
+    "description": "Comparación pareada de cada modelo contra el recomendado sobre los mismos orígenes del backtest."
    },
    "ComparacionModelo": {
     "properties": {
@@ -1615,6 +1748,137 @@
      "h"
     ],
     "title": "MetricasHorizonte"
+   },
+   "ModeloComparado": {
+    "properties": {
+     "modelo": {
+      "type": "string",
+      "title": "Modelo"
+     },
+     "familia": {
+      "type": "string",
+      "title": "Familia"
+     },
+     "servido_por_la_api": {
+      "type": "boolean",
+      "title": "Servido Por La Api",
+      "description": "False si solo se evaluó en el backtest (por ejemplo, Chronos en GPU)"
+     },
+     "mae": {
+      "type": "number",
+      "title": "Mae"
+     },
+     "mejora_mae_pct": {
+      "type": "number",
+      "title": "Mejora Mae Pct",
+      "description": "Porcentaje de MAE que reduce frente a la referencia; negativo si es peor"
+     },
+     "ic95_mejora_pct": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Ic95 Mejora Pct"
+     },
+     "p_ajustada": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "P Ajustada"
+     },
+     "veredicto": {
+      "type": "string",
+      "title": "Veredicto"
+     },
+     "wql": {
+      "type": "number",
+      "title": "Wql"
+     },
+     "mejora_wql_pct": {
+      "type": "number",
+      "title": "Mejora Wql Pct"
+     },
+     "veredicto_wql": {
+      "type": "string",
+      "title": "Veredicto Wql"
+     },
+     "origenes_en_que_gana_pct": {
+      "type": "number",
+      "title": "Origenes En Que Gana Pct"
+     },
+     "sesgo_tras_cambio": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sesgo Tras Cambio"
+     },
+     "umbrales_cumplidos": {
+      "type": "integer",
+      "title": "Umbrales Cumplidos"
+     },
+     "umbrales_evaluados": {
+      "type": "integer",
+      "title": "Umbrales Evaluados"
+     },
+     "umbrales_total": {
+      "type": "integer",
+      "title": "Umbrales Total"
+     },
+     "umbrales_fallidos": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Umbrales Fallidos"
+     },
+     "umbrales_sin_evaluar": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Umbrales Sin Evaluar"
+     },
+     "mejora_significativa": {
+      "type": "boolean",
+      "title": "Mejora Significativa"
+     },
+     "reemplaza_al_recomendado": {
+      "type": "boolean",
+      "title": "Reemplaza Al Recomendado"
+     }
+    },
+    "type": "object",
+    "required": [
+     "modelo",
+     "familia",
+     "servido_por_la_api",
+     "mae",
+     "mejora_mae_pct",
+     "ic95_mejora_pct",
+     "veredicto",
+     "wql",
+     "mejora_wql_pct",
+     "veredicto_wql",
+     "origenes_en_que_gana_pct",
+     "umbrales_cumplidos",
+     "umbrales_evaluados",
+     "umbrales_total",
+     "umbrales_fallidos",
+     "umbrales_sin_evaluar",
+     "mejora_significativa",
+     "reemplaza_al_recomendado"
+    ],
+    "title": "ModeloComparado"
    },
    "MonitorCobertura": {
     "properties": {

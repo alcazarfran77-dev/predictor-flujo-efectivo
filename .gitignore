@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Pesos descargados de Hugging Face y cachés
+.cache/
+hf_cache/
+modelos/
+
+# Salidas que se generan al correr en local
+notebooks/resultados_predictor_flujo.xlsx
+api_cache/
+api.log
+.pytest_cache/
+
+# Archivos de Office abiertos
+~$*.xlsx
+
+# Exports bancarios sin anonimizar: nunca se suben
+data/*FEBAN*.xlsx
+!data/*_anon.xlsx
+data/*feban*.json
+!data/*_anon.json
+
+# Sistema
+.DS_Store
+Thumbs.db

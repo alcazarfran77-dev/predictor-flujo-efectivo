@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from flujo_efectivo import backtest as bt          # noqa: E402
 from flujo_efectivo import entorno, graficas, latencia, metricas, reporte   # noqa: E402
+from comparar_modelos import escribir as escribir_comparacion   # noqa: E402
 from flujo_efectivo.config import RAIZ, Config     # noqa: E402
 from flujo_efectivo.datos import cuentas_saldo_cero, huella_series, preparar_datos   # noqa: E402
 from flujo_efectivo.modelos import FAMILIA, Registro, cargar_pipelines   # noqa: E402
@@ -151,6 +152,10 @@ def main():
     if tabla_modelos is not None:
         tabla_modelos.to_csv(tab / "modelos_hf.csv", float_format="%.3f")
 
+    # ---- ¿algún modelo mejora a ETS de forma significativa?
+    print("\nComparación pareada contra ETS:")
+    t_sig, t_sig_serie, t_sig_periodo, _ = escribir_comparacion(resultados, salida)
+
     reporte.exportar_excel(salida / "resultados_predictor_flujo.xlsx", {
         "resumen": (resumen, True), "metricas_regresion": (t_reg, True), "metricas_clasificacion": (t_clf, True),
         "metricas_por_periodo": (t_per, True), "efecto_temporada": (efecto, True),
@@ -158,6 +163,8 @@ def main():
         "latencia": (t_lat, True), "escalabilidad": (t_esc, True), "pronostico": (pronostico_final, False),
         "backtest": (resultados, False), "series_diarias": (datos.series, False),
         "categorias": (datos.tabla_categorias, True),
+        "comparacion_vs_ets": (t_sig, True), "comparacion_por_serie": (t_sig_serie, True),
+        "comparacion_por_periodo": (t_sig_periodo, True),
     })
 
     n_eval = len(resultados) // len(registro)

@@ -23,6 +23,7 @@ import pandas as pd
 from . import VERSION, alertas, confianza
 from ._rutas import RAIZ  # noqa: F401  (agrega src/ al path)
 from flujo_efectivo import backtest as bt
+from flujo_efectivo import significancia
 from flujo_efectivo.config import ARCHIVO_JSON, Config
 from flujo_efectivo.covariables import fechas_futuras
 from flujo_efectivo.datos import huella_series, preparar_datos
@@ -111,6 +112,7 @@ class ServicioPronostico:
         self._locks = {}
         self._pronosticos, self._latencias, self._confianza = {}, {}, {}
         self._lock_externo = threading.Lock()
+        self._lock_comparacion, self._comparacion = threading.Lock(), None
         self.estado_backtest = {}
         self.hilo = None
         self.listo = False
@@ -217,6 +219,7 @@ class ServicioPronostico:
                 with self._lock_bt:
                     self.backtest = pd.concat([self.backtest, res[columnas]], ignore_index=True)
                     self._confianza.clear()
+                    self._comparacion = None
                     try:                                  # la caché solo ahorra tiempo en el siguiente arranque
                         self.dir_cache.mkdir(parents=True, exist_ok=True)
                         self.backtest.to_csv(self._ruta_cache(), index=False, compression="gzip")
@@ -399,6 +402,93 @@ class ServicioPronostico:
                         and fila["umbrales_cumplidos"] == fila["umbrales_total"])
             filas.append(fila)
         return filas
+
+    def _backtest_evaluacion(self):
+        """Backtest con más modelos evaluados (por ejemplo, Chronos en GPU) si corresponde a los mismos datos.
+
+        Se usa `results/colab_gpu/tablas/backtest.csv.gz` solo cuando sus valores reales y los pronósticos del modelo
+        recomendado coinciden con el backtest de la API. Si no, la comparación cubre los modelos que sirve la API.
+        """
+        propio = self.backtest[self.backtest["modelo"].isin(self.modelos)]
+        archivo = self.dir_resultados / "colab_gpu" / "tablas" / "backtest.csv.gz"
+        if archivo.exists():
+            try:
+                ext = pd.read_csv(archivo, parse_dates=["ds", "origen"])
+                llave = ["unique_id", "origen", "ds"]
+                ref = self.modelo_recomendado
+                a = ext[ext["modelo"] == ref].set_index(llave)[["y", "pronostico"]].sort_index()
+                b = propio[propio["modelo"] == ref].set_index(llave)[["y", "pronostico"]].sort_index()
+                if len(a) and a.index.equals(b.index) and np.allclose(a.to_numpy(), b.to_numpy(), rtol=1e-6, atol=1.0):
+                    return ext, self.ruta_relativa(archivo)
+                log.warning("El backtest de %s no corresponde a los datos cargados; se ignora.", archivo)
+            except Exception:
+                log.exception("No se pudo leer %s", archivo)
+        return propio, None
+
+    def comparacion_estadistica(self):
+        """¿Algún modelo mejora de forma significativa al recomendado? Incluye modelos evaluados que la API no sirve."""
+        ref = self.modelo_recomendado
+        if self.estado_backtest.get(ref) != "listo" or self.estado_backtest.get(NAIVE) != "listo":
+            return {"disponible": False, "referencia": ref, "modelos": []}
+        with self._lock_comparacion:
+            if self._comparacion is None:
+                bt_eval, fuente = self._backtest_evaluacion()
+                tabla = significancia.comparar(bt_eval, ref, horizonte=self.cfg.horizonte)
+                self._comparacion = (bt_eval, fuente, tabla)
+            bt_eval, fuente, tabla = self._comparacion
+        bn = bt_eval[bt_eval["modelo"] == NAIVE]
+        mae_naive = confianza._mae(bn)
+        filas = []
+        for m, r in tabla.iterrows():
+            if m == NAIVE:
+                continue
+            bm = bt_eval[bt_eval["modelo"] == m]
+            t = confianza.metricas_basicas(bm, mae_naive)
+            sesgo, _ = confianza.sesgo_tras_cambio(bm, self.cfg)
+            servido = m in self.modelos
+            if servido and m not in self._latencias:
+                self.pronostico_modelo(m)
+            latencia = self._latencias.get(m) if servido else None
+            umbrales = confianza.evaluar_umbrales({"rmae": t["rmae"], "wql": t["wql"], "cobertura": t["cobertura"],
+                                                   "f1_direccion": t["f1_direccion"], "sesgo_cambio": sesgo,
+                                                   "latencia": latencia})
+            evaluados = [u for u in umbrales if u["cumple"] is not None]
+            fallidos = [u["nombre"] for u in evaluados if not u["cumple"]]
+            sin_evaluar = [u["nombre"] for u in umbrales if u["cumple"] is None]
+            significativa = r["Veredicto MAE"] == significancia.V_MEJORA
+            filas.append({
+                "modelo": m, "familia": FAMILIA.get(m, ""), "servido_por_la_api": servido,
+                "mae": r["MAE (M MXN)"] * 1e6, "mejora_mae_pct": r["Mejora MAE (%)"],
+                "ic95_mejora_pct": [r["IC95 inferior (%)"], r["IC95 superior (%)"]],
+                "p_ajustada": confianza._f(r["p ajustada (Holm)"]), "veredicto": r["Veredicto MAE"],
+                "wql": r["WQL"], "mejora_wql_pct": r["Mejora WQL (%)"], "veredicto_wql": r["Veredicto WQL"],
+                "origenes_en_que_gana_pct": r["Orígenes en que gana (%)"], "sesgo_tras_cambio": confianza._f(sesgo),
+                "umbrales_cumplidos": len(evaluados) - len(fallidos), "umbrales_evaluados": len(evaluados),
+                "umbrales_total": len(umbrales), "umbrales_fallidos": fallidos, "umbrales_sin_evaluar": sin_evaluar,
+                "mejora_significativa": significativa,
+                "reemplaza_al_recomendado": bool(significativa and not fallidos and not sin_evaluar),
+            })
+        mejores = [f for f in filas if f["mejora_significativa"]]
+        reemplazos = [f["modelo"] for f in filas if f["reemplaza_al_recomendado"]]
+        minimo = f"{significancia.MEJORA_MINIMA * 100:.0f} %"
+        if reemplazos:
+            conclusion = (f"{', '.join(reemplazos)} mejora de forma significativa a {ref} y cumple todos los umbrales: "
+                          f"conviene evaluarlo como reemplazo.")
+        elif mejores:
+            mejor = max(mejores, key=lambda f: f["mejora_mae_pct"])
+            pendientes = mejor["umbrales_fallidos"] + [f"{u} (sin medir)" for u in mejor["umbrales_sin_evaluar"]]
+            conclusion = (f"{mejor['modelo']} tiene {mejor['mejora_mae_pct']:.1f} % menos error que {ref}, una mejora "
+                          f"significativa, pero todavía no lo reemplaza. Le falta: {'; '.join(pendientes)}. "
+                          f"{ref} sigue como modelo recomendado.")
+        else:
+            conclusion = (f"Ningún modelo mejora a {ref} de forma significativa con el mínimo de {minimo}. "
+                          f"{ref} sigue como modelo recomendado.")
+        return {"disponible": True, "referencia": ref, "mae_referencia": float(tabla["MAE referencia (M MXN)"].iloc[0]) * 1e6
+                if len(tabla) else None, "origenes": int(bt_eval["origen"].nunique()),
+                "mejora_minima_pct": significancia.MEJORA_MINIMA * 100, "alfa": significancia.ALFA,
+                "metodo": "Diebold-Mariano con varianza HAC, intervalo por bootstrap de bloques y ajuste de Holm",
+                "fuente": fuente or "Backtest de la API", "incluye_modelos_no_servidos": any(not f["servido_por_la_api"] for f in filas),
+                "modelos": filas, "conclusion": conclusion}
 
     def pronostico_externo(self, historia, modelo, horizonte, serie_id="externa"):
         """Pronostica una serie enviada por otro sistema (por ejemplo, el ERP) sin tocar los datos cargados."""

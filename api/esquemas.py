@@ -252,6 +252,44 @@ class ComparacionModelo(BaseModel):
     reemplaza_al_recomendado: Optional[bool] = None
 
 
+class ModeloComparado(BaseModel):
+    modelo: str
+    familia: str
+    servido_por_la_api: bool = Field(description="False si solo se evaluó en el backtest (por ejemplo, Chronos en GPU)")
+    mae: float
+    mejora_mae_pct: float = Field(description="Porcentaje de MAE que reduce frente a la referencia; negativo si es peor")
+    ic95_mejora_pct: list[float]
+    p_ajustada: Optional[float] = None
+    veredicto: str
+    wql: float
+    mejora_wql_pct: float
+    veredicto_wql: str
+    origenes_en_que_gana_pct: float
+    sesgo_tras_cambio: Optional[float] = None
+    umbrales_cumplidos: int
+    umbrales_evaluados: int
+    umbrales_total: int
+    umbrales_fallidos: list[str]
+    umbrales_sin_evaluar: list[str]
+    mejora_significativa: bool
+    reemplaza_al_recomendado: bool
+
+
+class ComparacionEstadistica(BaseModel):
+    """Comparación pareada de cada modelo contra el recomendado sobre los mismos orígenes del backtest."""
+    disponible: bool
+    referencia: str
+    mae_referencia: Optional[float] = None
+    origenes: Optional[int] = None
+    mejora_minima_pct: Optional[float] = None
+    alfa: Optional[float] = None
+    metodo: Optional[str] = None
+    fuente: Optional[str] = None
+    incluye_modelos_no_servidos: Optional[bool] = None
+    modelos: list[ModeloComparado]
+    conclusion: Optional[str] = None
+
+
 class PeticionPronostico(BaseModel):
     """Serie diaria enviada por otro sistema. Los fines de semana pasan al siguiente día hábil."""
     serie_id: str = Field(default="externa", max_length=64)

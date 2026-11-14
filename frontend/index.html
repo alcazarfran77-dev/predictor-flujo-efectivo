@@ -195,6 +195,28 @@
         <p class="pie-tabla" id="modelos-nota">Calculando los pronósticos de cada modelo…</p>
       </section>
     </div>
+    <section class="bloque" id="comparacion" aria-labelledby="comparacion-titulo" hidden>
+      <h2 id="comparacion-titulo">¿Algún modelo mejora al recomendado de forma significativa?</h2>
+      <p class="bloque__nota" id="comparacion-nota"></p>
+      <div class="tabla-envoltura">
+        <table class="tabla" id="tabla-comparacion">
+          <thead>
+            <tr>
+              <th scope="col">Modelo</th>
+              <th scope="col" class="num">MAE</th>
+              <th scope="col" class="num">Diferencia de MAE</th>
+              <th scope="col" class="num">IC 95 %</th>
+              <th scope="col" class="num">p ajustada</th>
+              <th scope="col">Veredicto</th>
+              <th scope="col" class="num">Umbrales</th>
+              <th scope="col">En la API</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="pie-tabla" id="comparacion-conclusion"></p>
+    </section>
   </main>
 
   <footer class="pie">

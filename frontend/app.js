@@ -307,6 +307,7 @@
 
   async function cargarModelos() {
     try { pintarModelos(await pedir("modelos")); } catch (e) { mostrarError(e); }
+    try { pintarComparacion(await pedir("comparacion")); } catch (e) { $("comparacion").hidden = true; }
   }
 
   // ------------------------------------------------------------------ alerta y resumen
@@ -694,6 +695,35 @@
     $("modelos-nota").textContent = reemplazo.length
       ? `${reemplazo.map((f) => f.modelo).join(", ")} reduce el MAE de ${rec.modelo} en 5 % o más y cumple todos los umbrales: conviene evaluarlo como reemplazo.`
       : `Ningún modelo alternativo reduce el MAE de ${rec ? rec.modelo : "el recomendado"} en 5 % o más cumpliendo todos los umbrales, así que sigue como recomendado. MAE en millones de MXN por día; latencia del pronóstico de todas las series.`;
+  }
+
+  function pintarComparacion(c) {
+    const seccion = $("comparacion");
+    if (!c || !c.disponible || !c.modelos.length) { seccion.hidden = true; return; }
+    const cambio = (v) => `${dec(Math.abs(v), 1)} % ${v >= 0 ? "menos" : "más"}`;
+    const marca = { "Mejora significativa": "bien", "Peor, significativo": "mal" };
+    $("comparacion-titulo").textContent = `¿Algún modelo mejora a ${c.referencia} de forma significativa?`;
+    $("comparacion-nota").textContent = `Cada modelo contra ${c.referencia} (MAE ${millones(c.mae_referencia)} M) sobre los mismos ${c.origenes} orígenes del backtest. `
+      + `Una mejora es significativa si baja el MAE al menos ${dec(c.mejora_minima_pct, 0)} %, con p ajustada menor a ${c.alfa} y un intervalo que no incluye el cero.`
+      + (c.incluye_modelos_no_servidos ? " Los modelos Chronos se evaluaron en GPU y la API no pronostica con ellos." : "");
+    $("tabla-comparacion").tBodies[0].replaceChildren(...c.modelos.map((f) => {
+      const [a, b] = f.ic95_mejora_pct;
+      const ic = a >= 0 ? `${dec(a, 1)} a ${dec(b, 1)} % menos` : b <= 0 ? `${dec(-b, 1)} a ${dec(-a, 1)} % más` : `${dec(-a, 1)} % más a ${dec(b, 1)} % menos`;
+      const p = f.p_ajustada == null ? "—" : f.p_ajustada < 0.001 ? "< 0.001" : dec(f.p_ajustada, 3);
+      const umbrales = `${f.umbrales_cumplidos} de ${f.umbrales_evaluados}` + (f.umbrales_sin_evaluar.length ? ` (${f.umbrales_sin_evaluar.length} sin medir)` : "");
+      const detalle = [...f.umbrales_fallidos.map((u) => `No cumple: ${u}`), ...f.umbrales_sin_evaluar.map((u) => `Sin medir: ${u}`)].join(". ");
+      return el("tr", {},
+        el("td", { texto: f.modelo }),
+        el("td", { class: "num", texto: `${millones(f.mae)} M` }),
+        el("td", { class: "num", texto: cambio(f.mejora_mae_pct) }),
+        el("td", { class: "num", texto: ic }),
+        el("td", { class: "num", texto: p }),
+        el("td", {}, el("span", { class: `veredicto veredicto--${marca[f.veredicto] || "neutro"}`, texto: f.veredicto })),
+        el("td", { class: "num", title: detalle || null, texto: umbrales }),
+        el("td", { texto: f.servido_por_la_api ? "Sí" : "Solo evaluado" }));
+    }));
+    $("comparacion-conclusion").textContent = `${c.conclusion} Método: ${c.metodo}.`;
+    seccion.hidden = false;
   }
 
   // ------------------------------------------------------------------ eventos
