@@ -240,7 +240,7 @@ El README, el cuaderno `notebooks/api_dashboard_colab.ipynb` y `api/publicar.py`
 
 ## 6. Revisar las pruebas
 
-Con cada cambio, GitHub corre las 78 pruebas del proyecto (validación de datos, API, página publicada y navegador) con el flujo de `.github/workflows/pruebas.yml`, y con `.github/workflows/docker.yml` construye la imagen de Docker, corre las pruebas dentro del contenedor y comprueba que la API arranca. Se ven en la pestaña "Actions": la primera vez tarda unos cinco minutos. La palomita verde junto a cada commit indica que pasaron; si aparece una cruz roja, al abrir la corrida se ve cuál prueba falló.
+Con cada cambio, GitHub corre las 97 pruebas del proyecto (validación de datos, API, página publicada y navegador) con el flujo de `.github/workflows/pruebas.yml`, y con `.github/workflows/docker.yml` construye la imagen de Docker, corre las pruebas dentro del contenedor y comprueba que la API arranca. Se ven en la pestaña "Actions": la primera vez tarda unos cinco minutos. La palomita verde junto a cada commit indica que pasaron; si aparece una cruz roja, al abrir la corrida se ve cuál prueba falló.
 
 ## 7. Actualizar la página cuando cambien los datos
 

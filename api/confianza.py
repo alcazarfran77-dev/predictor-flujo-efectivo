@@ -6,6 +6,8 @@ monitoreo avisan cuándo revisarlo o recalibrar el intervalo.
 import numpy as np
 import pandas as pd
 
+from .config_alertas import COBERTURA_MAX, COBERTURA_MIN, DIAS_SEGUIDOS_RMAE, LIMITE_RMAE   # noqa: F401
+
 NAIVE = "Naive (referencia)"
 
 # (clave, nombre, mínimo, máximo, unidad)
@@ -17,8 +19,7 @@ UMBRALES_ACEPTACION = [
     ("sesgo_cambio", "Sesgo medio en las 4 semanas tras un cambio de temporada", -0.3, 0.3, "M MXN/día"),
     ("latencia", "Latencia de la corrida diaria (todas las series)", None, 5.0, "s"),
 ]
-VENTANA_RMAE, LIMITE_RMAE, DIAS_SEGUIDOS_RMAE = 20, 0.90, 10
-VENTANA_COBERTURA, COBERTURA_MIN, COBERTURA_MAX = 40, 65.0, 95.0
+VENTANA_RMAE, VENTANA_COBERTURA = 20, 40       # días de las ventanas móviles; los límites viven en config_alertas.py
 DIAS_CAMBIO = 20
 
 

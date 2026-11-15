@@ -31,3 +31,9 @@ data/*feban*.json
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Archivos que genera el simulacro de operación
+data/simulacro_*.json
+mlruns/
+mlflow.db
+mlartifacts/

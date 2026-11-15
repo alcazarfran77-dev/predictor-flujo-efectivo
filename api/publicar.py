@@ -24,7 +24,10 @@ warnings.filterwarnings("ignore", message=".*starlette.testclient.*")   # aviso 
 from fastapi.testclient import TestClient  # noqa: E402
 
 from ._rutas import RAIZ  # noqa: E402
+import pandas as pd  # noqa: E402
+
 from .main import app  # noqa: E402
+from .observabilidad import Observabilidad  # noqa: E402
 from .servicio import ServicioPronostico  # noqa: E402
 from flujo_efectivo.validacion import DatosInvalidos  # noqa: E402
 
@@ -54,7 +57,7 @@ def _preparar_carpeta(destino):
 
 def _copiar_frontend(destino):
     origen = RAIZ / "frontend"
-    for f in ("app.js", "styles.css"):
+    for f in ("app.js", "styles.css", "operacion.js"):
         shutil.copy2(origen / f, destino / f)
     shutil.copytree(origen / "fuentes", destino / "fuentes")
     html = (origen / "index.html").read_text(encoding="utf-8")
@@ -64,6 +67,10 @@ def _copiar_frontend(destino):
     if meta not in html:
         raise RuntimeError("No encontré dónde marcar index.html como versión publicada.")
     (destino / "index.html").write_text(html, encoding="utf-8")
+    panel = (origen / "operacion.html").read_text(encoding="utf-8")
+    (destino / "operacion.html").write_text(panel.replace(
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n  ' + meta, 1), encoding="utf-8")
     (destino / MARCA).write_text("", encoding="utf-8")
 
 
@@ -71,7 +78,7 @@ def publicar(destino, ruta_datos=None, avance=print):
     destino = Path(destino)
     with tempfile.TemporaryDirectory() as tmp:
         servicio = ServicioPronostico(ruta_datos=ruta_datos, precalentar=False, escribir_salida=False, dir_salidas=tmp)
-        anterior = getattr(app.state, "servicio", None)
+        anterior, obs_anterior = getattr(app.state, "servicio", None), getattr(app.state, "obs", None)
         app.state.servicio = servicio
         try:
             with TestClient(app) as c:
@@ -85,6 +92,9 @@ def publicar(destino, ruta_datos=None, avance=print):
                         raise RuntimeError(f"GET {url} {params} respondió {r.status_code}: {r.text[:300]}")
                     return r.json()
 
+                # La página es una instantánea del ejemplo: el atraso de los datos se mide contra su siguiente día hábil.
+                siguiente = servicio.datos.fechas[-1] + pd.offsets.BDay(1)
+                app.state.obs = Observabilidad(fecha_referencia=f"{siguiente:%Y-%m-%d}", modo_respuesta="recomendar")
                 _preparar_carpeta(destino)
                 salud = pedir("/api/v1/salud")
                 salud.update(modo="estatico", archivo_salida=None,
@@ -93,6 +103,7 @@ def publicar(destino, ruta_datos=None, avance=print):
                             _escribir(destino, "series.json", pedir("/api/v1/series")),
                             _escribir(destino, "modelos.json", pedir("/api/v1/modelos")),
                             _escribir(destino, "comparacion.json", pedir("/api/v1/comparacion")),
+                            _escribir(destino, "observabilidad.json", pedir("/api/v1/observabilidad")),
                             _escribir(destino, "datos/validacion.json", pedir("/api/v1/datos/validacion"))]
                 for serie in servicio.datos.ids:
                     archivos.append(_escribir(destino, f"series/{serie}/historia.json",
@@ -108,7 +119,7 @@ def publicar(destino, ruta_datos=None, avance=print):
                 openapi = destino / "api" / "openapi.json"
                 openapi.write_text(json.dumps(c.get("/openapi.json").json(), ensure_ascii=False, indent=1), encoding="utf-8")
         finally:
-            app.state.servicio = anterior
+            app.state.servicio, app.state.obs = anterior, obs_anterior
     _copiar_frontend(destino)
     total = sum(1 for p in destino.rglob("*") if p.is_file())
     avance(f"Página generada en {destino}: {total} archivos ({len(archivos)} respuestas de la API en JSON), "

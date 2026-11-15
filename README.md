@@ -363,6 +363,36 @@ La página muestra los datos con los que se generó y la fecha de publicación. 
 
 ![Versión publicada del dashboard](results/capturas/pagina_publicada.png)
 
+## Observabilidad y respuesta a incidentes
+
+La API se vigila a sí misma. Publica métricas, escribe un log JSON por petición con su traza, mide cinco objetivos de nivel de servicio con su presupuesto de error y levanta alertas priorizadas por impacto, cada una con su runbook.
+
+| Qué | Dónde |
+|---|---|
+| Panel operativo en tiempo real (SLO, alertas, tráfico, calidad del modelo, drift y bitácora) | `/operacion.html` |
+| Estado completo en JSON | `GET /api/v1/observabilidad` |
+| Métricas en formato Prometheus | `GET /metrics` |
+| Carga de otro archivo de movimientos; si no pasa la validación, se conservan los datos anteriores | `POST /api/v1/datos/recargar` |
+| Detección de data drift (PSI, prueba KS y cambio de la media) | `src/flujo_efectivo/drift.py` |
+| Registro de corridas, monitoreo y modelo en MLflow | `python src/registrar_mlflow.py` |
+| Configuración de las alertas: SLO, ventanas, prioridades, runbooks e inhibiciones | `api/config_alertas.py` (`python -m api.config_alertas` la imprime) |
+| Monitor de alertas: consulta la API y avisa cuando una alerta se activa o se resuelve | `python herramientas/monitor_alertas.py --cada 30` |
+| Fallas sueltas para probar las alertas | `python herramientas/simular_operacion.py --fase errores` |
+| Simulacro de incidentes con ejecución de runbooks y registro | `python herramientas/simulacro_incidentes.py` |
+
+Los SLO son disponibilidad de la API (99.5 %), latencia (95 % de las peticiones en menos de 1 s), frescura de los datos, calidad del pronóstico (rMAE móvil en 0.90 o menos) y calibración del intervalo. Las alertas de la API usan la tasa de consumo del presupuesto en dos ventanas, así que un error aislado no avisa y una falla sostenida sí.
+
+| Variable | Por omisión | Uso |
+|---|---|---|
+| `FLUJO_LOG_FORMATO` | `json` | `texto` para logs legibles en consola |
+| `FLUJO_FECHA_REFERENCIA` | hoy | Fecha contra la que se mide el atraso de los datos |
+| `FLUJO_RESPUESTA_AUTO` | `recomendar` | `aplicar` conmuta sola al modelo de respaldo; `off` lo desactiva |
+| `FLUJO_TOKEN_ADMIN` | sin definir | Token de los endpoints de administración; sin él quedan deshabilitados |
+| `FLUJO_CAOS` | `0` | `1` permite inyectar fallas con el simulacro |
+| `FLUJO_OBS_ACELERAR` | `1` | Divide las ventanas de las alertas; solo para demostraciones |
+
+MLflow no está en `requirements-api.txt`: se instala aparte con `pip install mlflow` y sus archivos (`mlflow.db`, `mlruns/`) no se suben al repositorio.
+
 ## Resultados
 
 Los resultados de ETS, SARIMAX y el ingenuo salen del script en CPU y están en [`results/`](results/). Los de Chronos-2 y Chronos-Bolt Small salen del cuaderno corrido en Google Colab con GPU y están en [`results/colab_gpu/`](results/colab_gpu/). Las dos corridas usan los mismos datos, orígenes y horizontes: los valores reales y los pronósticos de ETS son idénticos en ambas.

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="flujo-modo" content="estatico">
+  <title>Operación del predictor de flujo de efectivo</title>
+  <meta name="description" content="Panel operativo: SLO, presupuestos de error, alertas, tráfico, calidad del modelo y data drift.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314212e'/%3E%3Cpath d='M5 19h22' stroke='%23d03b3b' stroke-width='2'/%3E%3Cpath d='M6 15l6-5 5 4 9-7' fill='none' stroke='%233987e5' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <script src="operacion.js" defer></script>
+</head>
+<body>
+  <a class="saltar" href="#principal">Ir al panel</a>
+  <header class="cabecera">
+    <div class="cabecera__titulo">
+      <h1>Operación del predictor</h1>
+      <p id="contexto" class="cabecera__contexto">Conectando con la API…</p>
+    </div>
+    <div id="estado-general" class="estado-general" data-estado="pendiente" role="status" aria-live="polite">
+      <span class="estado-general__punto" aria-hidden="true"></span>
+      <div><strong id="estado-texto">Conectando…</strong><span id="estado-detalle"></span></div>
+    </div>
+  </header>
+
+  <main id="principal">
+    <section class="bloque" aria-labelledby="slo-titulo">
+      <h2 id="slo-titulo">Objetivos de nivel de servicio y presupuesto de error</h2>
+      <div id="slos" class="slos"></div>
+    </section>
+
+    <section class="bloque" aria-labelledby="alertas-titulo">
+      <h2 id="alertas-titulo">Alertas activas</h2>
+      <p class="bloque__nota" id="alertas-nota"></p>
+      <div class="tabla-envoltura">
+        <table class="tabla tabla--ajustada" id="tabla-alertas">
+          <thead><tr><th scope="col">Prioridad</th><th scope="col">Alerta</th><th scope="col">Qué pasa y a quién afecta</th><th scope="col">Activa desde</th><th scope="col">Runbook</th><th scope="col">Notificación</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="doble">
+      <section class="bloque" aria-labelledby="trafico-titulo">
+        <h2 id="trafico-titulo">Peticiones y errores</h2>
+        <p class="bloque__nota" id="trafico-nota"></p>
+        <div id="graf-trafico" class="grafica-op" role="img" aria-label="Peticiones y errores por intervalo"></div>
+      </section>
+      <section class="bloque" aria-labelledby="latencia-titulo">
+        <h2 id="latencia-titulo">Latencia p95</h2>
+        <p class="bloque__nota" id="latencia-nota"></p>
+        <div id="graf-latencia" class="grafica-op" role="img" aria-label="Latencia p95 por intervalo"></div>
+      </section>
+    </div>
+
+    <section class="bloque" aria-labelledby="consumo-titulo">
+      <h2 id="consumo-titulo">Tasa de consumo del presupuesto por ventana</h2>
+      <p class="bloque__nota">Una tasa de 1 agota el presupuesto justo al final de los 30 días. La alerta rápida exige 14.4 o más en las ventanas de 5 minutos y 1 hora; la sostenida, 6 o más en las de 30 minutos y 6 horas.</p>
+      <div class="tabla-envoltura">
+        <table class="tabla" id="tabla-consumo">
+          <thead><tr><th scope="col">SLO</th><th scope="col" class="num">5 min</th><th scope="col" class="num">30 min</th><th scope="col" class="num">1 h</th><th scope="col" class="num">6 h</th><th scope="col" class="num">Peticiones (1 h)</th><th scope="col" class="num">Errores o lentas (total)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="doble">
+      <section class="bloque" aria-labelledby="rmae-titulo">
+        <h2 id="rmae-titulo">Calidad del modelo: rMAE móvil</h2>
+        <p class="bloque__nota" id="rmae-nota"></p>
+        <div id="graf-rmae" class="grafica-op" role="img" aria-label="rMAE móvil de 20 días"></div>
+      </section>
+      <section class="bloque" aria-labelledby="cob-titulo">
+        <h2 id="cob-titulo">Calibración: cobertura móvil</h2>
+        <p class="bloque__nota" id="cob-nota"></p>
+        <div id="graf-cobertura" class="grafica-op" role="img" aria-label="Cobertura móvil de 40 días"></div>
+      </section>
+    </div>
+
+    <section class="bloque" aria-labelledby="drift-titulo">
+      <h2 id="drift-titulo">Data drift</h2>
+      <p class="bloque__nota" id="drift-nota"></p>
+      <div class="tabla-envoltura">
+        <table class="tabla" id="tabla-drift">
+          <thead><tr><th scope="col">Serie o indicador</th><th scope="col">PSI</th><th scope="col" class="num">Valor p (KS)</th><th scope="col" class="num">Cambio de la media</th><th scope="col">Nivel</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="doble">
+      <section class="bloque" aria-labelledby="auto-titulo">
+        <h2 id="auto-titulo">Respuesta automática</h2>
+        <p class="bloque__nota" id="auto-nota"></p>
+        <ul id="acciones" class="lista-eventos"></ul>
+      </section>
+      <section class="bloque" aria-labelledby="eventos-titulo">
+        <h2 id="eventos-titulo">Bitácora</h2>
+        <p class="bloque__nota">Alertas activadas y resueltas, cargas de datos y acciones, de la más reciente a la más antigua.</p>
+        <ul id="eventos" class="lista-eventos"></ul>
+      </section>
+    </div>
+  </main>
+
+  <footer class="pie">
+    <p class="pie__enlaces"><a href="./">Dashboard del pronóstico</a> · <a id="enlace-metricas" href="metrics">Métricas en formato Prometheus</a> · <a id="enlace-json" href="api/v1/observabilidad">Este panel en JSON</a> <span id="pie-version"></span></p>
+  </footer>
+</body>
+</html>

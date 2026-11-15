@@ -424,3 +424,70 @@ main[data-estado="recargando"] .bloque { opacity: 0.5; transition: opacity 120ms
 .veredicto--mal { color: var(--critico-texto); font-weight: 600; }
 .veredicto--mal::before { content: "▼ "; font-size: 0.75em; }
 .veredicto--neutro { color: var(--tinta-2); }
+
+/* ------------------------------------------------------------ panel operativo */
+.estado-general { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--radio); background: var(--superficie); box-shadow: var(--sombra); min-width: 240px; }
+.estado-general div { display: grid; }
+.estado-general span:not(.estado-general__punto) { color: var(--tinta-2); font-size: 0.8125rem; }
+.estado-general__punto { width: 14px; height: 14px; border-radius: 50%; background: var(--eje); flex: none; }
+.estado-general[data-estado="operando normal"] .estado-general__punto { background: var(--bien); }
+.estado-general[data-estado="con avisos"] .estado-general__punto { background: var(--aviso); }
+.estado-general[data-estado="degradado"] .estado-general__punto { background: var(--serio); }
+.estado-general[data-estado="incidente"] .estado-general__punto, .estado-general[data-estado="sin conexión"] .estado-general__punto { background: var(--critico); }
+.estado-general[data-estado="incidente"] { outline: 2px solid var(--critico); }
+
+.slos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.slo { background: var(--superficie); border-radius: var(--radio); box-shadow: var(--sombra); padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.slo__nombre { font-size: 0.8125rem; color: var(--tinta-2); }
+.slo__valor { font-size: 1.5rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.slo__objetivo, .slo__pie { font-size: 0.8125rem; color: var(--tinta-3); }
+.slo__barra { height: 8px; border-radius: 4px; background: var(--linea); overflow: hidden; }
+.slo__barra span { display: block; height: 100%; border-radius: 4px; background: var(--serie); }
+.slo[data-estado="en riesgo"] .slo__barra span { background: var(--aviso); }
+.slo[data-estado="agotado"] .slo__barra span, .slo[data-estado="incumple"] .slo__barra span { background: var(--critico); }
+.slo__estado { font-size: 0.8125rem; font-weight: 600; }
+.slo[data-estado="cumple"] .slo__estado { color: var(--exito-texto); }
+.slo[data-estado="agotado"] .slo__estado, .slo[data-estado="incumple"] .slo__estado { color: var(--critico-texto); }
+
+.prioridad { display: inline-block; min-width: 2.4em; text-align: center; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.8125rem; border: 1.5px solid currentColor; }
+.prioridad--P1 { color: #fff; background: var(--critico); border-color: var(--critico); }
+.prioridad--P2 { color: var(--critico-texto); }
+.prioridad--P3 { color: var(--tinta); }
+.prioridad--P4 { color: var(--tinta-3); border-style: dashed; }
+.tabla--ajustada td { white-space: normal; vertical-align: top; }
+.tabla--ajustada td:nth-child(3) { min-width: 320px; }
+.tabla--ajustada small { display: block; color: var(--tinta-2); }
+tr.inhibida td { opacity: 0.6; }
+.sin-alertas { padding: 16px; color: var(--tinta-2); }
+
+.grafica-op { background: var(--superficie); border-radius: var(--radio); box-shadow: var(--sombra); padding: 10px 12px 6px; }
+.grafica-op svg { display: block; width: 100%; height: auto; }
+.grafica-op text { fill: var(--tinta-2); font-size: 11px; font-family: var(--fuente); }
+.grafica-op .eje { stroke: var(--linea); stroke-width: 1; }
+.grafica-op .limite { stroke: var(--tinta-2); stroke-width: 1; stroke-dasharray: 4 3; }
+.grafica-op .linea { fill: none; stroke: var(--serie); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.grafica-op .barra { fill: var(--serie); }
+.grafica-op .barra--error { fill: var(--critico); }
+.grafica-op .zona { fill: var(--linea); opacity: 0.55; }
+.grafica-op .punto { fill: var(--serie); stroke: var(--superficie); stroke-width: 2; }
+.leyenda-op { display: flex; gap: 16px; font-size: 0.8125rem; color: var(--tinta-2); padding: 0 2px 4px; }
+.leyenda-op i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; background: var(--serie); }
+.leyenda-op i.rojo { background: var(--critico); }
+.cabecera:has(.estado-general) { padding-bottom: 22px; }
+
+.medidor { display: inline-flex; align-items: center; gap: 8px; }
+.medidor__pista { width: 120px; height: 8px; border-radius: 4px; background: var(--linea); position: relative; overflow: hidden; }
+.medidor__pista span { position: absolute; inset: 0 auto 0 0; background: var(--serie); border-radius: 4px; }
+.medidor__pista span.alto { background: var(--serio); }
+.nivel-drift { font-weight: 600; }
+.nivel-drift--significativo { color: var(--critico-texto); }
+.nivel-drift--significativo::before { content: "▲ "; font-size: 0.75em; }
+.nivel-drift--moderado::before { content: "● "; font-size: 0.6em; vertical-align: middle; }
+.nivel-drift--sin-cambio { color: var(--tinta-2); font-weight: 400; }
+.tasa-alta { color: var(--critico-texto); font-weight: 700; }
+
+.lista-eventos { list-style: none; padding: 0; background: var(--superficie); border-radius: var(--radio); box-shadow: var(--sombra); max-height: 360px; overflow: auto; }
+.lista-eventos li { padding: 10px 14px; border-bottom: 1px solid var(--linea); font-size: 0.875rem; display: grid; gap: 2px; }
+.lista-eventos li:last-child { border-bottom: 0; }
+.lista-eventos time, .lista-eventos small { color: var(--tinta-3); font-size: 0.8125rem; }
+@media (max-width: 980px) { .slos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

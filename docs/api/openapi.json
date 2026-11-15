@@ -515,6 +515,185 @@
      }
     }
    }
+  },
+  "/api/v1/observabilidad": {
+   "get": {
+    "summary": "SLO, presupuestos de error, alertas, drift, tráfico y respuesta automática",
+    "operationId": "observabilidad_api_v1_observabilidad_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/observabilidad/eventos": {
+   "get": {
+    "summary": "Bitácora de alertas activadas y resueltas y de acciones automáticas",
+    "operationId": "eventos_api_v1_observabilidad_eventos_get",
+    "parameters": [
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 400,
+       "minimum": 1,
+       "default": 100,
+       "title": "Limite"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/datos/recargar": {
+   "post": {
+    "summary": "Carga otro JSON de movimientos; si no pasa la validación, conserva los datos actuales",
+    "operationId": "recargar_datos_api_v1_datos_recargar_post",
+    "parameters": [
+     {
+      "name": "x-token-admin",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Token-Admin"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "examples": [
+         {
+          "archivo": "movimientos.json"
+         }
+        ],
+        "title": "Peticion"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/observabilidad/simulacro": {
+   "post": {
+    "summary": "Simulacro: inyecta errores y latencia para probar las alertas (requiere FLUJO_CAOS=1)",
+    "operationId": "simulacro_api_v1_observabilidad_simulacro_post",
+    "parameters": [
+     {
+      "name": "x-token-admin",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Token-Admin"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "examples": [
+         {
+          "error": 0.3,
+          "latencia_ms": 0
+         }
+        ],
+        "title": "Peticion"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {

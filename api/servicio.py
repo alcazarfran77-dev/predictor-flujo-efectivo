@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from . import VERSION, alertas, confianza
+from .observabilidad import tramo
 from ._rutas import RAIZ  # noqa: F401  (agrega src/ al path)
 from flujo_efectivo import backtest as bt
 from flujo_efectivo import significancia
@@ -275,7 +276,8 @@ class ServicioPronostico:
         with self._locks[modelo]:
             if modelo not in self._pronosticos:
                 t0 = time.perf_counter()
-                pred = self.registro.funciones[modelo](self.datos.series, self.cfg.horizonte_final)
+                with tramo("inferencia", modelo=modelo):
+                    pred = self.registro.funciones[modelo](self.datos.series, self.cfg.horizonte_final)
                 self._latencias[modelo] = time.perf_counter() - t0
                 self._pronosticos[modelo] = (pred, datetime.now(timezone.utc).isoformat(timespec="seconds"))
                 return pred, self._pronosticos[modelo][1], False
@@ -289,7 +291,8 @@ class ServicioPronostico:
         dias = alertas.tabla_dias(p, self.umbral_deficit)
         dias["h"] = np.arange(1, len(dias) + 1)
 
-        conf = self.metricas_confianza(modelo, serie)
+        with tramo("confianza"):
+            conf = self.metricas_confianza(modelo, serie)
         por_h = {f["h"]: f for f in conf["por_horizonte"]} if conf else {}
         salida_dias = []
         for fila in dias.to_dict("records"):
