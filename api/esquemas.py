@@ -36,6 +36,7 @@ class Salud(BaseModel):
     umbral_deficit: float
     fechas_pronostico: list[str]
     archivo_salida: Optional[str] = Field(description="Último reporte JSON escrito en el servidor")
+    artefacto: Optional[dict] = Field(None, description="Versión del almacén de artefactos que se sirve (None = datos locales)")
 
 
 class Serie(BaseModel):

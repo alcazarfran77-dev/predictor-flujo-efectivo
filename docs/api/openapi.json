@@ -633,6 +633,50 @@
     }
    }
   },
+  "/api/v1/artefactos/revisar": {
+   "post": {
+    "summary": "Revisa ya el almacén de artefactos (lo llama el job al terminar, por la red privada)",
+    "operationId": "revisar_artefactos_api_v1_artefactos_revisar_post",
+    "parameters": [
+     {
+      "name": "x-token-admin",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Token-Admin"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/observabilidad/simulacro": {
    "post": {
     "summary": "Simulacro: inyecta errores y latencia para probar las alertas (requiere FLUJO_CAOS=1)",
@@ -2709,6 +2753,19 @@
       ],
       "title": "Archivo Salida",
       "description": "Último reporte JSON escrito en el servidor"
+     },
+     "artefacto": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artefacto",
+      "description": "Versión del almacén de artefactos que se sirve (None = datos locales)"
      }
     },
     "type": "object",

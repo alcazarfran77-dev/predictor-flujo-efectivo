@@ -5,6 +5,8 @@
 #   -> dashboard en http://localhost:8000/ y contrato de la API en http://localhost:8000/docs
 #
 # Sirve los modelos estadísticos (ETS, SARIMAX y el ingenuo). Chronos necesita GPU y se corre en el cuaderno.
+# La misma imagen corre el job diario: python -m herramientas.artefactos publicar (ver "Job diario y almacén de artefactos").
+# MALLOC_ARENA_MAX=2 y FLUJO_HILOS=8 acotan la memoria para el plan de 0.5 CPU y 512 MB (reporte técnico 1.1, sección 2.4).
 # Las instrucciones completas están en la sección "Ejecutar con Docker" del README.
 
 ARG IMAGEN_PYTHON=python:3.12-slim
@@ -12,6 +14,8 @@ FROM ${IMAGEN_PYTHON}
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    MALLOC_ARENA_MAX=2 \
+    FLUJO_HILOS=8 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 

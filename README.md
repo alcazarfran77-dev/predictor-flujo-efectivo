@@ -393,6 +393,36 @@ Los SLO son disponibilidad de la API (99.5 %), latencia (95 % de las peticiones 
 
 MLflow no está en `requirements-api.txt`: se instala aparte con `pip install mlflow` y sus archivos (`mlflow.db`, `mlruns/`) no se suben al repositorio.
 
+## Job diario y almacén de artefactos
+
+En producción el cálculo sale de la API: un job diario calcula el backtest y los pronósticos y la API solo los sirve. Render no deja montar un disco persistente en un Cron Job, y un disco solo lo ve el servicio que lo tiene, así que el job no le deja archivos a la API en un disco: publica cada corrida como una **versión inmutable** en un almacén de objetos compatible con S3 (Cloudflare R2, AWS S3 o MinIO) y la API la descarga.
+
+```
+entrada/movimientos.json        lo deja tesorería (python -m herramientas.artefactos subir-entrada archivo.json)
+versiones/<id>/...              datos, backtest, corrida y pronósticos de una corrida, con manifiesto SHA-256
+actual.json                     apuntador a la versión vigente; el job lo mueve al final
+```
+
+- El job publica la versión y al último mueve `actual.json`. Si falla, el apuntador no se mueve y la API sigue con la versión anterior. Si las series no cambiaron desde la versión vigente, termina sin publicar.
+- Cada instancia de la API revisa el apuntador cada 60 s con una petición HEAD. Cuando cambia, baja la versión, verifica el SHA-256 de cada archivo, la carga y la calienta en memoria, y solo entonces la pone en lugar de la anterior, sin reiniciar. Si un archivo no cuadra, conserva la versión que tiene y registra el evento `artefacto_rechazado`.
+- Revertir es mover el apuntador: `python -m herramientas.artefactos revertir <versión>`. Todas las instancias la toman en su siguiente revisión.
+- `GET /api/v1/salud` dice qué versión se sirve (`artefacto`) y `/metrics` publica `flujo_artefacto_info`, la RSS del proceso y sus segundos de CPU.
+
+| Componente en Render | Configuración |
+|---|---|
+| Servicio web (Docker) | Plan 0.5 CPU y 512 MB; `FLUJO_ALMACEN=s3://<bucket>/prod`, `FLUJO_S3_ENDPOINT`, credenciales de solo lectura, `FLUJO_ALMACEN_OBLIGATORIO=1`, `FLUJO_HILOS=8`, `MALLOC_ARENA_MAX=2` |
+| Cron Job (misma imagen) | Plan 1 CPU y 2 GB; comando `python -m herramientas.artefactos publicar`; horario `0 13 * * 1-5` (07:00 en Ciudad de México); credenciales de escritura |
+
+| Variable | Uso |
+|---|---|
+| `FLUJO_ALMACEN` | `s3://bucket/prefijo` o `file:///ruta`. Sin valor, la API trabaja como antes: datos locales y backtest en un hilo |
+| `FLUJO_S3_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | Endpoint y token del bucket (R2 usa la región `auto`) |
+| `FLUJO_ALMACEN_REVISAR` | Segundos entre revisiones del apuntador (60) |
+| `FLUJO_ALMACEN_OBLIGATORIO` | `1` en producción: si no carga la versión, la API no arranca y Render conserva la instancia anterior |
+| `FLUJO_AVISAR_URL` | Opcional, en el job: URL interna de la API para que revise sin esperar (usa `FLUJO_TOKEN_ADMIN`) |
+
+Para probar todo en Codespaces sin nube: `FLUJO_ALMACEN=file:///tmp/almacen python -m herramientas.artefactos publicar` y después `FLUJO_ALMACEN=file:///tmp/almacen uvicorn api.main:app`. Para la prueba de carga contra el servicio desplegado (puerta G1 del plan de escalamiento): `python -m herramientas.prueba_carga https://<servicio>.onrender.com`.
+
 ## Resultados
 
 Los resultados de ETS, SARIMAX y el ingenuo salen del script en CPU y están en [`results/`](results/). Los de Chronos-2 y Chronos-Bolt Small salen del cuaderno corrido en Google Colab con GPU y están en [`results/colab_gpu/`](results/colab_gpu/). Las dos corridas usan los mismos datos, orígenes y horizontes: los valores reales y los pronósticos de ETS son idénticos en ambas.

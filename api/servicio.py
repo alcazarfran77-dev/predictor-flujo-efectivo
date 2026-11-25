@@ -91,9 +91,12 @@ class ErrorServicio(Exception):
 class ServicioPronostico:
     def __init__(self, ruta_datos=None, modelo_recomendado="ETS", usar_chronos=False, repos_hf=None,
                  dir_resultados=None, dir_cache=None, calcular_faltantes=True, umbral_deficit=0.0,
-                 precalentar=True, dir_salidas=None, escribir_salida=True):
+                 precalentar=True, dir_salidas=None, escribir_salida=True, dir_pronosticos=None, artefacto=None):
         self.cfg = Config()
         self.ruta_datos = Path(ruta_datos or ARCHIVO_JSON)
+        self.dir_pronosticos = Path(dir_pronosticos) if dir_pronosticos else None
+        self.artefacto = artefacto                     # versión del almacén que se sirve (None = datos locales)
+        self.pronosticos_cargados = []
         self.dir_salidas = Path(dir_salidas or RAIZ / "salidas")
         self.escribir_salida = escribir_salida
         self.ultimo_archivo = None
@@ -114,6 +117,7 @@ class ServicioPronostico:
         self._pronosticos, self._latencias, self._confianza = {}, {}, {}
         self._lock_externo = threading.Lock()
         self._lock_comparacion, self._comparacion = threading.Lock(), None
+        self._respuestas, self._candados_memo, self._lock_memo = {}, {}, threading.Lock()
         self.estado_backtest = {}
         self.hilo = None
         self.listo = False
@@ -142,6 +146,7 @@ class ServicioPronostico:
             self.modelo_recomendado = "ETS"
         for m in self.modelos:
             self._locks[m] = threading.Lock()
+        self._cargar_pronosticos()
 
         self.backtest = self._leer_backtest()
         presentes = set(self.backtest["modelo"].unique()) if len(self.backtest) else set()
@@ -207,6 +212,65 @@ class ServicioPronostico:
     def _ruta_cache(self):
         return self.dir_cache / f"backtest_{self.huella[:16]}_h{self.cfg.horizonte}.csv.gz"
 
+    # ------------------------------------------------------------------ artefactos del job
+    def _cargar_pronosticos(self):
+        """Toma los pronósticos que calculó el job (pronosticos/indice.json) si son de las mismas series."""
+        if not self.dir_pronosticos or not (self.dir_pronosticos / "indice.json").exists():
+            return
+        indice = json.loads((self.dir_pronosticos / "indice.json").read_text(encoding="utf-8"))
+        if indice.get("huella_series") != self.huella or indice.get("horizonte") != self.cfg.horizonte_final:
+            log.warning("Los pronósticos de %s son de otras series u otro horizonte; se recalculan.", self.dir_pronosticos)
+            return
+        for m, info in indice["modelos"].items():
+            if m not in self.modelos:
+                continue
+            pred = pd.read_csv(self.dir_pronosticos / info["archivo"], parse_dates=["ds"])
+            pred["ds"] = pred["ds"].astype("datetime64[ns]")
+            pred["respaldo"] = pred["respaldo"].astype(bool)
+            self._pronosticos[m] = (pred, info["generado"])
+            self._latencias[m] = info["latencia_s"]
+            self.pronosticos_cargados.append(m)
+
+    def exportar_artefactos(self, carpeta, extra=None):
+        """Escribe lo que la API necesita para no calcular nada: datos, backtest, corrida y pronósticos."""
+        carpeta = Path(carpeta)
+        (carpeta / "results" / "tablas").mkdir(parents=True, exist_ok=True)
+        (carpeta / "pronosticos").mkdir(parents=True, exist_ok=True)
+        if self.ruta_datos.resolve() != (carpeta / "movimientos.json").resolve():
+            (carpeta / "movimientos.json").write_bytes(self.ruta_datos.read_bytes())
+        columnas = [c for c in self.backtest.columns if c != "mes"]
+        self.backtest[columnas].to_csv(carpeta / "results" / "tablas" / "backtest.csv.gz", index=False, compression="gzip")
+        f = self.datos.fechas
+        corrida = {"fecha": datetime.now(timezone.utc).isoformat(timespec="seconds"), "archivo": "movimientos.json",
+                   "huella": self.huella_archivo, "huella_series": self.huella, "modelos": sorted(self.backtest["modelo"].unique()),
+                   "parametros": {"horizonte": self.cfg.horizonte, "max_origenes": self.cfg.max_origenes,
+                                  "min_contexto": self.cfg.min_contexto, "cuantiles": list(self.cfg.cuantiles)},
+                   "datos": {"movimientos_unicos": len(self.datos.mov), "dias_habiles": len(f),
+                             "desde": f"{f[0]:%Y-%m-%d}", "hasta": f"{f[-1]:%Y-%m-%d}", "series": list(self.datos.ids)},
+                   **(extra or {})}
+        (carpeta / "results" / "corrida.json").write_text(json.dumps(limpiar_json(corrida), ensure_ascii=False, indent=1),
+                                                          encoding="utf-8")
+        modelos = {}
+        for m, (pred, generado) in self._pronosticos.items():
+            archivo = re.sub(r"[^A-Za-z0-9]+", "_", m).strip("_") + ".csv.gz"
+            pred.to_csv(carpeta / "pronosticos" / archivo, index=False, compression="gzip")
+            modelos[m] = {"archivo": archivo, "generado": generado, "latencia_s": self._latencias[m]}
+        indice = {"huella_series": self.huella, "horizonte": self.cfg.horizonte_final, "modelos": modelos}
+        (carpeta / "pronosticos" / "indice.json").write_text(json.dumps(indice, ensure_ascii=False, indent=1), encoding="utf-8")
+        return corrida
+
+    def calentar(self):
+        """Deja en memoria lo que piden el dashboard y el monitor, para que la primera consulta no lo calcule."""
+        for m in self.modelos:
+            self.pronostico_modelo(m)
+        for uid in self.datos.ids:
+            self.metricas_confianza(self.modelo_recomendado, uid)
+            self.pronostico(uid, self.modelo_recomendado, self.cfg.horizonte_final)
+        self.alertas_series(self.modelo_recomendado)
+        self.comparacion()
+        self.comparacion_estadistica()
+        return self
+
     def _calcular_backtest(self, faltantes):
         """Corre en un hilo: usa su propio registro para no compartir la caché de SARIMAX con las peticiones."""
         registro = Registro(self.cfg, self.pipelines)
@@ -221,6 +285,8 @@ class ServicioPronostico:
                     self.backtest = pd.concat([self.backtest, res[columnas]], ignore_index=True)
                     self._confianza.clear()
                     self._comparacion = None
+                    with self._lock_memo:
+                        self._respuestas.clear()
                     try:                                  # la caché solo ahorra tiempo en el siguiente arranque
                         self.dir_cache.mkdir(parents=True, exist_ok=True)
                         self.backtest.to_csv(self._ruta_cache(), index=False, compression="gzip")
@@ -284,8 +350,34 @@ class ServicioPronostico:
         pred, generado = self._pronosticos[modelo]
         return pred, generado, True
 
+    # ------------------------------------------------------------------ respuestas en memoria
+    def _estable(self):
+        """Con el backtest terminado las respuestas ya no cambian: se calculan una vez por versión de datos."""
+        return bool(self.estado_backtest) and all(e in ("listo", "error") for e in self.estado_backtest.values())
+
+    def _memo(self, clave, calcular):
+        """Calcula una respuesta una sola vez; las peticiones simultáneas esperan a la primera en vez de repetirla
+        (con 40 peticiones a la vez, repetirla en paralelo llevaba la memoria al límite de 512 MB)."""
+        if not self._estable():
+            return calcular()
+        with self._lock_memo:
+            if clave in self._respuestas:
+                return self._respuestas[clave]
+            candado = self._candados_memo.setdefault(clave, threading.Lock())
+        with candado:
+            with self._lock_memo:
+                if clave in self._respuestas:
+                    return self._respuestas[clave]
+            valor = calcular()
+            with self._lock_memo:
+                self._respuestas[clave] = valor
+            return valor
+
     def pronostico(self, serie, modelo, horizonte):
         self.validar(modelo, serie)
+        return self._memo(("pronostico", serie, modelo, horizonte), lambda: self._pronostico(serie, modelo, horizonte))
+
+    def _pronostico(self, serie, modelo, horizonte):
         pred, generado, en_cache = self.pronostico_modelo(modelo)
         p = pred[pred["unique_id"] == serie].sort_values("ds").head(horizonte)
         dias = alertas.tabla_dias(p, self.umbral_deficit)
@@ -371,6 +463,9 @@ class ServicioPronostico:
     def alertas_series(self, modelo):
         """Resumen de alerta de déficit de todas las series con un modelo."""
         self.validar(modelo)
+        return self._memo(("alertas", modelo), lambda: self._alertas_series(modelo))
+
+    def _alertas_series(self, modelo):
         filas = []
         for uid in self.datos.ids:
             p = self.pronostico(uid, modelo, self.cfg.horizonte_final)
@@ -383,6 +478,9 @@ class ServicioPronostico:
 
     def comparacion(self):
         """Modelos lado a lado con los criterios de aceptación y de cambio de modelo del reporte."""
+        return self._memo(("comparacion",), self._comparacion_modelos)
+
+    def _comparacion_modelos(self):
         filas = []
         ref = self.metricas_confianza(self.modelo_recomendado) if self.estado_backtest.get(self.modelo_recomendado) == "listo" else None
         for m in self.modelos:
@@ -430,6 +528,9 @@ class ServicioPronostico:
 
     def comparacion_estadistica(self):
         """¿Algún modelo mejora de forma significativa al recomendado? Incluye modelos evaluados que la API no sirve."""
+        return self._memo(("comparacion_estadistica",), self._comparacion_estadistica)
+
+    def _comparacion_estadistica(self):
         ref = self.modelo_recomendado
         if self.estado_backtest.get(ref) != "listo" or self.estado_backtest.get(NAIVE) != "listo":
             return {"disponible": False, "referencia": ref, "modelos": []}

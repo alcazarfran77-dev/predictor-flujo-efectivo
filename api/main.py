@@ -12,14 +12,24 @@ Variables de entorno opcionales:
     FLUJO_CHRONOS_BOLT   repositorio o carpeta de Chronos-Bolt Small
     FLUJO_CORS           orígenes permitidos separados por coma (por omisión, *)
     FLUJO_UMBRAL_DEFICIT umbral de déficit en MXN (0)
+    FLUJO_ALMACEN        s3://bucket/prefijo o file:///ruta: la API sirve la versión que publica el job (api/almacen.py)
+    FLUJO_ALMACEN_REVISAR segundos entre revisiones del apuntador actual.json (60)
+    FLUJO_ARTEFACTOS_DIR carpeta local efímera donde se bajan las versiones (/tmp/artefactos_flujo)
+    FLUJO_ALMACEN_OBLIGATORIO 1 en producción: si no carga la versión del almacén, la API no arranca (no sirve el ejemplo)
+    FLUJO_HILOS          hilos para endpoints síncronos (0 = el valor de AnyIO, 40); con 0.5 CPU basta con 8
 
 Las variables de observabilidad (logs, alertas, respuesta automática) están en api/observabilidad.py.
 """
 import asyncio
+import gc
 import logging
 import os
+import shutil
+import tempfile
+import threading
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Optional
 
 from typing import Any
@@ -30,6 +40,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import VERSION
+from . import almacen as A
 from . import esquemas as E
 from . import observabilidad as O
 from ._rutas import RAIZ
@@ -41,35 +52,128 @@ logging.basicConfig(level=os.environ.get("FLUJO_LOG", "INFO"), format="%(asctime
 O.configurar_logs()
 
 
-def crear_servicio():
+def crear_servicio(carpeta=None, manifiesto=None, almacen=None):
+    """Sin carpeta: datos locales (FLUJO_DATOS) y backtest en un hilo, como antes.
+    Con carpeta: una versión del almacén; la API no calcula backtest ni pronósticos, solo los lee."""
     repos = {}
     if os.environ.get("FLUJO_CHRONOS2"):
         repos["Chronos-2"] = os.environ["FLUJO_CHRONOS2"]
     if os.environ.get("FLUJO_CHRONOS_BOLT"):
         repos["Chronos-Bolt Small"] = os.environ["FLUJO_CHRONOS_BOLT"]
-    return ServicioPronostico(
-        ruta_datos=os.environ.get("FLUJO_DATOS"),
-        dir_salidas=os.environ.get("FLUJO_SALIDAS"),
-        modelo_recomendado=os.environ.get("FLUJO_MODELO", "ETS"),
-        usar_chronos=os.environ.get("FLUJO_CHRONOS", "0") == "1",
-        repos_hf=repos or None,
-        umbral_deficit=float(os.environ.get("FLUJO_UMBRAL_DEFICIT", "0")),
-    )
+    comunes = dict(dir_salidas=os.environ.get("FLUJO_SALIDAS"), modelo_recomendado=os.environ.get("FLUJO_MODELO", "ETS"),
+                   usar_chronos=os.environ.get("FLUJO_CHRONOS", "0") == "1", repos_hf=repos or None,
+                   umbral_deficit=float(os.environ.get("FLUJO_UMBRAL_DEFICIT", "0")))
+    if carpeta is None:
+        return ServicioPronostico(ruta_datos=os.environ.get("FLUJO_DATOS"), **comunes)
+    carpeta = Path(carpeta)
+    artefacto = {"version": manifiesto["version"], "creado": manifiesto["creado"],
+                 "datos_hasta": manifiesto["meta"].get("datos_hasta"), "origen": almacen.descripcion if almacen else None,
+                 "bytes": sum(a["bytes"] for a in manifiesto["archivos"]), "cargado": A.ahora_iso()}
+    return ServicioPronostico(ruta_datos=carpeta / "movimientos.json", dir_resultados=carpeta / "results",
+                              dir_pronosticos=carpeta / "pronosticos", dir_cache=carpeta / "cache",
+                              calcular_faltantes=False, precalentar=False, artefacto=artefacto, **comunes)
+
+
+def dir_artefactos():
+    return Path(os.environ.get("FLUJO_ARTEFACTOS_DIR") or Path(tempfile.gettempdir()) / "artefactos_flujo")
+
+
+def cargar_version(app, almacen, version):
+    """Baja, valida y calienta una versión en un servicio nuevo; solo entonces lo pone en lugar del actual."""
+    t0 = time.perf_counter()
+    carpeta, manifiesto = A.descargar(almacen, version, dir_artefactos())
+    nuevo = crear_servicio(carpeta, manifiesto, almacen).iniciar().calentar()
+    anterior = getattr(app.state, "servicio", None)
+    app.state.servicio = nuevo                                   # las peticiones en curso terminan con el anterior
+    gc.collect()                                                 # suelta pronto la versión anterior (memoria de 512 MB)
+    vig = getattr(app.state, "vigilante", None)
+    if vig:
+        vig.version_actual = version
+    obs = getattr(app.state, "obs", None)
+    if obs and anterior is not None:
+        obs.evento("artefacto_cargado", f"Versión {version} con datos hasta el {nuevo.artefacto['datos_hasta']} "
+                   f"(antes {(anterior.artefacto or {}).get('version', 'datos locales')}).", accion="cambiar_version", archivo=version)
+    conservar = {version, (anterior.artefacto or {}).get("version") if anterior is not None else None}
+    for c in dir_artefactos().iterdir():                         # deja solo la versión actual y la anterior
+        if c.is_dir() and c.name not in conservar:
+            shutil.rmtree(c, ignore_errors=True)
+    log.info("Versión %s cargada en %.1f s", version, time.perf_counter() - t0)
+    return nuevo
+
+
+def vigilar(app, almacen, detener, intervalo):
+    """Hilo de fondo: revisa el apuntador y carga la versión nueva. Si algo falla, conserva la versión actual."""
+    vig = app.state.vigilante
+    rechazadas = set()
+    while not detener.wait(intervalo):
+        revisar_ahora(app, almacen, vig, rechazadas)
+
+
+def revisar_ahora(app, almacen, vig, rechazadas=None):
+    rechazadas = rechazadas if rechazadas is not None else set()
+    try:
+        r = vig.revisar()
+        vig.ultimo_error = None
+        if r.version:
+            with app.state.candado_carga:
+                cargar_version(app, almacen, r.version)
+        return r.version
+    except Exception as e:
+        vig.ultimo_error = f"{type(e).__name__}: {e}"
+        vig.etiqueta = None                                      # reintenta en la siguiente revisión
+        log.warning("No se pudo cargar la versión del almacén: %s", vig.ultimo_error)
+        obs = getattr(app.state, "obs", None)
+        clave = (vig.ultimo_error[:80])
+        if obs and clave not in rechazadas:
+            rechazadas.add(clave)
+            obs.evento("artefacto_rechazado", f"No se cargó la versión nueva; la API conserva "
+                       f"{vig.version_actual or 'los datos locales'}. {vig.ultimo_error}", "P2", accion="conservar_version_anterior")
+        return None
 
 
 @asynccontextmanager
 async def ciclo_de_vida(app: FastAPI):
-    if getattr(app.state, "servicio", None) is None:
-        app.state.servicio = crear_servicio()
+    hilos = int(os.environ.get("FLUJO_HILOS", "0"))
+    if hilos > 0:            # menos hilos = menos arenas de memoria; con medio CPU más hilos no dan más capacidad
+        import anyio
+        anyio.to_thread.current_default_thread_limiter().total_tokens = hilos
     if getattr(app.state, "obs", None) is None:
         app.state.obs = O.Observabilidad()
+    almacen = A.abrir() if getattr(app.state, "servicio", None) is None else None
+    detener = threading.Event()
+    if almacen is not None:
+        app.state.candado_carga = threading.Lock()
+        app.state.vigilante = A.Vigilante(almacen)
+        obligatorio = os.environ.get("FLUJO_ALMACEN_OBLIGATORIO") == "1"
+        try:
+            actual = A.vigente(almacen)
+            if actual:
+                cargar_version(app, almacen, actual["version"])
+            elif obligatorio:
+                raise A.ErrorAlmacen(f"{almacen.descripcion} no tiene versiones publicadas todavía")
+            else:
+                log.warning("%s no tiene versiones todavía: la API arranca con los datos locales.", almacen.descripcion)
+        except Exception as e:
+            app.state.vigilante.ultimo_error = f"{type(e).__name__}: {e}"
+            if obligatorio:          # en producción no se sirven los datos de ejemplo: el despliegue falla y Render
+                log.error("No se pudo cargar la versión vigente de %s: %s", almacen.descripcion, e)   # conserva la instancia anterior
+                raise
+            log.error("No se pudo cargar la versión vigente de %s (%s): la API arranca con los datos locales.",
+                      almacen.descripcion, e)
+    if getattr(app.state, "servicio", None) is None:
+        app.state.servicio = crear_servicio()
     if not app.state.servicio.listo:
         try:
             app.state.servicio.iniciar()
         except DatosInvalidos as e:
             log.error("No se puede arrancar: %s\n%s", app.state.servicio.ruta_datos, e)
             raise
+    if almacen is not None:
+        app.state.almacen = almacen
+        threading.Thread(target=vigilar, args=(app, almacen, detener, float(os.environ.get("FLUJO_ALMACEN_REVISAR", "60"))),
+                         daemon=True, name="vigilante-artefactos").start()
     yield
+    detener.set()
 
 
 app = FastAPI(
@@ -154,7 +258,16 @@ def salud(request: Request):
         "horizonte_maximo": s.cfg.horizonte_final, "umbral_deficit": s.umbral_deficit,
         "fechas_pronostico": s.fechas_siguientes(),
         "archivo_salida": s.ruta_relativa(s.ultimo_archivo) if s.ultimo_archivo else None,
+        "artefacto": estado_artefacto(request),
     }
+
+
+def estado_artefacto(request):
+    s, vig = servicio(request), getattr(request.app.state, "vigilante", None)
+    if s.artefacto is None and vig is None:
+        return None
+    return {**(s.artefacto or {}), "ultima_revision": vig.ultima_revision if vig else None,
+            "ultimo_error": vig.ultimo_error if vig else None}
 
 
 @api.get("/series", response_model=list[E.Serie], summary="Series diarias disponibles")
@@ -303,6 +416,16 @@ def recargar_datos(request: Request, peticion: dict = Body(..., examples=[{"arch
                "El backtest se recalcula en segundo plano si los datos cambiaron.", accion="recalcular_backtest", archivo=nombre)
     return {"aceptado": True, "datos_en_uso": nombre, "movimientos": len(nuevo.datos.mov), "hasta": f"{nuevo.datos.fechas[-1]:%Y-%m-%d}",
             "backtest": dict(nuevo.estado_backtest)}
+
+
+@api.post("/artefactos/revisar", summary="Revisa ya el almacén de artefactos (lo llama el job al terminar, por la red privada)")
+def revisar_artefactos(request: Request, x_token_admin: Optional[str] = Header(None)):
+    exigir_admin(x_token_admin)
+    almacen, vig = getattr(request.app.state, "almacen", None), getattr(request.app.state, "vigilante", None)
+    if almacen is None or vig is None:
+        raise ErrorServicio(409, "La API no usa almacén de artefactos: define FLUJO_ALMACEN.")
+    nueva = revisar_ahora(request.app, almacen, vig)
+    return {"version_cargada": nueva, "artefacto": estado_artefacto(request)}
 
 
 @api.post("/observabilidad/simulacro", summary="Simulacro: inyecta errores y latencia para probar las alertas (requiere FLUJO_CAOS=1)")

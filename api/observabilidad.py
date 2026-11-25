@@ -544,12 +544,26 @@ def resumen(obs, servicio, serie_principal):
     }
 
 
+def memoria_residente():
+    """RSS en bytes desde /proc (Linux); None en otros sistemas."""
+    try:
+        with open("/proc/self/statm") as f:
+            return int(f.read().split()[1]) * os.sysconf("SC_PAGE_SIZE")
+    except (OSError, ValueError, IndexError):
+        return None
+
+
 def medidores(res, servicio):
     """Medidores del modelo, los datos, los SLO y las alertas para `/metrics`."""
     m = [("flujo_info", "Versión de la API y modelo recomendado.", {"version": VERSION, "modelo_recomendado": res["modelo"]["recomendado"]}, 1),
          ("flujo_datos_dias_atraso", "Días hábiles de atraso de los movimientos.", {}, next(s["valor"] for s in res["slos"] if s["id"] == "frescura")),
          ("flujo_datos_movimientos", "Movimientos cargados.", {}, res["datos"]["movimientos"]),
-         ("flujo_datos_duplicados", "Movimientos repetidos descartados al cargar.", {}, res["datos"]["duplicados"])]
+         ("flujo_datos_duplicados", "Movimientos repetidos descartados al cargar.", {}, res["datos"]["duplicados"]),
+         ("flujo_proceso_memoria_bytes", "Memoria residente (RSS) del proceso de la API.", {}, memoria_residente()),
+         ("flujo_proceso_cpu_segundos", "Segundos de CPU usados por el proceso desde que arrancó.", {}, time.process_time())]
+    artefacto = getattr(servicio, "artefacto", None)
+    if artefacto:
+        m.append(("flujo_artefacto_info", "Versión del almacén de artefactos que se sirve.", {"version": artefacto["version"]}, 1))
     for nombre, e in res["modelo"]["modelos"].items():
         etq = {"modelo": nombre, "serie": res["modelo"]["serie"]}
         m.append(("flujo_backtest_listo", "1 si el backtest del modelo está listo.", {"modelo": nombre}, 1 if e.get("backtest") == "listo" else 0))
