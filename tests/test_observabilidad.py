@@ -203,7 +203,7 @@ def test_factor_de_recalibracion(servicio):
     assert 0.7 < factor < 1.3                                                   # el intervalo de ETS ya está cerca de 80 %
 
 
-def test_administracion_deshabilitada_sin_token_y_carga_invalida_conserva_los_datos(cliente, monkeypatch):
+def test_administracion_deshabilitada_sin_token_y_carga_invalida_conserva_los_datos(cliente, monkeypatch, tmp_path):
     assert cliente.post("/api/v1/datos/recargar", json={"archivo": "x.json"}).status_code == 403
     assert cliente.post("/api/v1/observabilidad/simulacro", json={"error": 1}).status_code == 403
     monkeypatch.setenv("FLUJO_TOKEN_ADMIN", "secreto")
@@ -211,7 +211,12 @@ def test_administracion_deshabilitada_sin_token_y_carga_invalida_conserva_los_da
     cabeceras = {"X-Token-Admin": "secreto"}
     assert cliente.post("/api/v1/observabilidad/simulacro", json={"error": 1}, headers=cabeceras).status_code == 403   # falta FLUJO_CAOS
     assert cliente.post("/api/v1/datos/recargar", json={"archivo": "../README.md"}, headers=cabeceras).status_code == 422
-    invalido = archivo_invalido(RAIZ / "data" / "simulacro_invalido.json")
+    # En la imagen Docker data/ es de solo lectura: el servicio apunta a una copia de los datos en una carpeta temporal
+    s = cliente.app.state.servicio
+    copia = tmp_path / s.ruta_datos.name
+    copia.write_bytes(s.ruta_datos.read_bytes())
+    monkeypatch.setattr(s, "ruta_datos", copia)
+    invalido = archivo_invalido(tmp_path / "simulacro_invalido.json")
     try:
         r = cliente.post("/api/v1/datos/recargar", json={"archivo": invalido.name}, headers=cabeceras)
         assert r.status_code == 422 and not r.json()["aceptado"] and "concepto" in " ".join(r.json()["errores"])
