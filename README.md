@@ -49,13 +49,24 @@ predictor-flujo-efectivo/
 │   ├── servicio.py                   datos, modelos, backtest en caché, pronósticos y reporte JSON
 │   ├── alertas.py                    probabilidad y niveles de alerta de déficit
 │   ├── confianza.py                  métricas, umbrales del reporte y monitoreo
+│   ├── observabilidad.py             métricas, logs, trazas, SLO, alertas y respuesta automática
+│   ├── config_alertas.py             SLO, ventanas, prioridades, runbooks e inhibiciones
+│   ├── almacen.py                    almacén de artefactos (local o S3) que comparten el job y la API
 │   ├── esquemas.py                   contrato de entrada y salida
 │   ├── validar.py                    python -m api.validar: revisa un JSON de movimientos
 │   ├── exportar.py                   python -m api.exportar: escribe el reporte JSON sin levantar la API
-│   └── publicar.py                   python -m api.publicar: genera la página de GitHub Pages en docs/
-├── frontend/                         dashboard (HTML, CSS y JavaScript sin dependencias)
+│   ├── publicar.py                   python -m api.publicar: genera la página de GitHub Pages en docs/
+│   └── _rutas.py                     raíz del repositorio y acceso a src/
+├── herramientas/                     job diario y herramientas de operación
+│   ├── artefactos.py                 job diario: publica, lista y revierte versiones del almacén
+│   ├── prueba_carga.py               prueba de carga de la puerta G1 contra el servicio desplegado
+│   ├── monitor_alertas.py            consulta la API y avisa cuando una alerta se activa o se resuelve
+│   ├── simular_operacion.py          tráfico y fallas sueltas para probar las alertas
+│   └── simulacro_incidentes.py       simulacro de dos incidentes con sus runbooks
+├── frontend/                         dashboard y panel operativo (HTML, CSS y JavaScript sin dependencias)
 ├── docs/                             página publicada: el dashboard con las respuestas de la API en JSON
-├── tests/                            pruebas de validación, API, página publicada y navegador
+├── tests/                            107 pruebas: validación, API, observabilidad, almacén, alertas,
+│                                     significancia, página publicada y navegador
 ├── data/
 │   ├── README.md                     origen, formato JSON, validación y anonimización
 │   ├── DEPOSITOS_CARGADOS_FEBAN_sep2025_sep2026_anon.xlsx   entrada del cuaderno
@@ -69,6 +80,7 @@ predictor-flujo-efectivo/
 │   ├── ejecutar_backtest.py          corre todo y guarda results/
 │   ├── comparar_modelos.py           ¿algún modelo mejora a ETS de forma significativa?
 │   ├── excel_a_json.py               convierte un export FEBAN en Excel al JSON de la API
+│   ├── registrar_mlflow.py           registra backtest, monitoreo y modelo recomendado en MLflow
 │   └── flujo_efectivo/
 │       ├── config.py                 parámetros (celda 4.1 del cuaderno)
 │       ├── datos.py                  lectura (Excel o JSON), deduplicación, clasificación y series
@@ -77,6 +89,8 @@ predictor-flujo-efectivo/
 │       ├── modelos.py                Chronos, ETS, SARIMAX e ingenuo con una sola interfaz
 │       ├── backtest.py               walk-forward y pronóstico hacia adelante
 │       ├── metricas.py               regresión, clasificación y periodos
+│       ├── significancia.py          Diebold-Mariano, bootstrap de bloques y ajuste de Holm
+│       ├── drift.py                  detección de data drift
 │       ├── latencia.py               latencia y escalabilidad
 │       ├── graficas.py               figuras en PNG
 │       ├── reporte.py                lectura de la corrida y exportación a Excel
@@ -84,11 +98,14 @@ predictor-flujo-efectivo/
 └── results/
     ├── README.md
     ├── lectura_corrida.md
+    ├── comparacion_vs_ets.md         ¿algún modelo mejora a ETS? (modelos en CPU)
     ├── resultados_predictor_flujo.xlsx
     ├── corrida.json
     ├── tablas/                       CSV de cada tabla del cuaderno
     ├── figuras/                      PNG de cada gráfica
-    └── capturas/                     el dashboard funcionando (escritorio, móvil, modo oscuro y versión publicada)
+    ├── capturas/                     el dashboard funcionando (escritorio, móvil, modo oscuro y versión publicada)
+    ├── colab_gpu/                    corrida con Chronos-2 y Chronos-Bolt Small en Colab con GPU
+    └── simulacro_incidentes/         evidencia y registro del simulacro de incidentes del 14-11-2026
 ```
 
 El cuaderno es la versión principal del trabajo. El código de `src/` es el mismo, separado en módulos para correrlo sin Jupyter; comprobé que los dos dan exactamente los mismos pronósticos para los modelos estadísticos.
@@ -188,7 +205,7 @@ Al arrancar, el servicio lee el JSON de movimientos y lo valida; si falta algún
 
 | Método | Ruta | Devuelve |
 |---|---|---|
-| GET | `/api/v1/salud` | Estado del servicio, datos cargados, modelos y estado de su backtest |
+| GET | `/api/v1/salud` | Estado del servicio, datos cargados, modelos, estado de su backtest y versión del artefacto que sirve |
 | GET | `/api/v1/series` | Series disponibles con su último valor |
 | GET | `/api/v1/series/{serie}/historia?dias=60` | Valores diarios observados |
 | GET | `/api/v1/pronostico?serie=&modelo=&horizonte=` | P10, P50 y P90 por día, probabilidad y nivel de alerta de cada día, error histórico de ese horizonte, flujo acumulado y alerta del horizonte |
@@ -201,6 +218,12 @@ Al arrancar, el servicio lee el JSON de movimientos y lo valida; si falta algún
 | POST | `/api/v1/reporte?modelo=` | Escribe ese reporte como archivo en `salidas/` y devuelve su ruta |
 | GET | `/api/v1/datos/validacion` | Resultado de la validación del JSON cargado: avisos y resumen |
 | POST | `/api/v1/datos/validar` | Valida un JSON de movimientos sin cargarlo: errores por movimiento y campo, y avisos |
+| POST | `/api/v1/datos/recargar` | Carga otro JSON de la misma carpeta; si no pasa la validación, conserva los datos anteriores (requiere `FLUJO_TOKEN_ADMIN`) |
+| GET | `/api/v1/observabilidad` | SLO, presupuestos de error, alertas, drift, tráfico y respuesta automática |
+| GET | `/api/v1/observabilidad/eventos` | Bitácora de alertas activadas y resueltas y de acciones automáticas |
+| POST | `/api/v1/observabilidad/simulacro` | Inyecta errores y latencia para probar las alertas (requiere `FLUJO_TOKEN_ADMIN` y `FLUJO_CAOS=1`) |
+| POST | `/api/v1/artefactos/revisar` | Revisa el almacén sin esperar los 60 s; lo llama el job diario (requiere `FLUJO_TOKEN_ADMIN`) |
+| GET | `/metrics` | Métricas en formato Prometheus |
 | GET | `/docs` | Contrato OpenAPI interactivo |
 
 Los montos van en pesos. Este es un día de la respuesta de `/api/v1/pronostico` para `OPERATIVO_TOTAL` con ETS:
@@ -287,7 +310,11 @@ python -m pytest tests -q
 CAPTURAS=results/capturas python -m pytest tests/test_e2e.py -q   # además guarda capturas del dashboard
 ```
 
-Las pruebas de validación (`tests/test_validacion.py`) revisan cada dato obligatorio, la estructura del archivo, la historia mínima, las monedas y los avisos, y que el JSON y el Excel den las mismas series. Las pruebas de contrato (`tests/test_api.py`) revisan cada endpoint contra su esquema, que los cuantiles de la API sean idénticos a los del paquete de modelos, que las métricas reproduzcan las tablas de `results/`, que la alerta siga la regla del P10, que el reporte escrito en archivo sea idéntico a la respuesta de la API, que el servicio no arranque con un JSON incompleto o con un Excel, que los errores lleguen con un mensaje claro, que CORS responda y que, sin backtest, la API siga pronosticando y avise con 503. Las pruebas de la página publicada (`tests/test_pagina.py`) generan `docs/`, comparan sus archivos con las respuestas de la API y abren el dashboard como si estuviera en `usuario.github.io/predictor-flujo-efectivo/`, sin servidor. La prueba en navegador (`tests/test_e2e.py`) levanta la API con uvicorn, abre el dashboard en Chromium y comprueba que los números de la tabla son los mismos que entrega la API, que al cambiar de serie y de modelo se hacen las peticiones correctas, que el frontend funciona servido desde otro origen, que los botones de descarga y de guardado producen el mismo reporte que la API, que muestra un error claro si la API no responde y que no hay desplazamiento horizontal en móvil. Las 67 pruebas pasan; la del navegador se omite si Playwright no está instalado.
+Las pruebas de validación (`tests/test_validacion.py`) revisan cada dato obligatorio, la estructura del archivo, la historia mínima, las monedas y los avisos, y que el JSON y el Excel den las mismas series. Las pruebas de contrato (`tests/test_api.py`) revisan cada endpoint contra su esquema, que los cuantiles de la API sean idénticos a los del paquete de modelos, que las métricas reproduzcan las tablas de `results/`, que la alerta siga la regla del P10, que el reporte escrito en archivo sea idéntico a la respuesta de la API, que el servicio no arranque con un JSON incompleto o con un Excel, que los errores lleguen con un mensaje claro, que CORS responda y que, sin backtest, la API siga pronosticando y avise con 503. Las pruebas de la página publicada (`tests/test_pagina.py`) generan `docs/`, comparan sus archivos con las respuestas de la API y abren el dashboard como si estuviera en `usuario.github.io/predictor-flujo-efectivo/`, sin servidor. La prueba en navegador (`tests/test_e2e.py`) levanta la API con uvicorn, abre el dashboard en Chromium y comprueba que los números de la tabla son los mismos que entrega la API, que al cambiar de serie y de modelo se hacen las peticiones correctas, que el frontend funciona servido desde otro origen, que los botones de descarga y de guardado producen el mismo reporte que la API, que muestra un error claro si la API no responde y que no hay desplazamiento horizontal en móvil.
+
+Las pruebas de observabilidad (`tests/test_observabilidad.py`) revisan las trazas, los logs JSON, las métricas Prometheus, los SLO con su presupuesto de error, la inhibición de alertas, el drift, la conmutación al modelo de respaldo, que la administración quede cerrada sin token y que una carga inválida conserve los datos. Las del almacén (`tests/test_almacen.py`) publican, descargan y revierten versiones, comprueban que un archivo alterado no se usa y que la API sirve la versión publicada sin calcular. `tests/test_alertas.py` cubre la probabilidad y los niveles de alerta de déficit, y `tests/test_significancia.py`, la comparación estadística contra ETS.
+
+En total son 107 pruebas en 8 archivos. Las de navegador se omiten si Playwright no está instalado, y la del almacén con S3 emulado, si falta `moto` (`pip install moto`). En GitHub, el flujo `.github/workflows/pruebas.yml` las corre con Chromium en cada cambio: 106 pasan y se omite la de S3.
 
 ![Dashboard conectado a la API](results/capturas/dashboard_escritorio.png)
 
@@ -341,7 +368,7 @@ docker run --rm -v "$(pwd)/docs:/app/docs" predictor-flujo-efectivo python -m ap
 docker run --rm predictor-flujo-efectivo python -m pytest tests -q
 ```
 
-En el último comando, las dos pruebas de navegador se omiten porque la imagen no trae Chromium; las demás deben pasar. Las variables de entorno de la tabla de arriba (`FLUJO_MODELO`, `FLUJO_UMBRAL_DEFICIT`, `FLUJO_CORS`, etc.) se pasan con `-e`. Para usar otra versión de Python: `docker build --build-arg IMAGEN_PYTHON=python:3.13-slim -t predictor-flujo-efectivo .`
+En el último comando se omiten las pruebas de navegador (`tests/test_e2e.py` y la página abierta en Chromium), porque la imagen no trae Chromium, y la del almacén con S3, porque no trae `moto`; las demás deben pasar: 100 pasan y 3 se omiten. Las variables de entorno de la tabla de arriba (`FLUJO_MODELO`, `FLUJO_UMBRAL_DEFICIT`, `FLUJO_CORS`, etc.) se pasan con `-e`. Para usar otra versión de Python: `docker build --build-arg IMAGEN_PYTHON=python:3.13-slim -t predictor-flujo-efectivo .`
 
 En Linux, si la carpeta montada pertenece a otro usuario y la API no puede escribir en ella, se le da permiso al UID del contenedor con `sudo chown 1000 salidas` o se corre el contenedor con el usuario propio: `--user "$(id -u)"`. En GitHub, el flujo `.github/workflows/docker.yml` construye la imagen con cada cambio, corre las pruebas dentro del contenedor y comprueba que la API arranca y queda `healthy`.
 
